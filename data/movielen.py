@@ -29,9 +29,9 @@ with zipfile.ZipFile(os.path.join(RAW_PATH, DATASET + '.zip')) as z:
             meta_df = pd.read_csv(f, sep='|', header=None, encoding='ISO-8859-1')
     elif DATASET == 'ml-1m':
         with z.open(os.path.join(DATASET, 'ratings.dat')) as f:
-            data_df = pd.read_csv(f, sep=b'::', header=None, engine='python')
+            data_df = pd.read_csv(f, sep='::', header=None, engine='python')
         with z.open(os.path.join(DATASET, 'movies.dat')) as f:
-            meta_df = pd.read_csv(f, sep=b'::', header=None, engine='python')
+            meta_df = pd.read_csv(f, sep='::', header=None, engine='python')
 data_df.columns = ['user_id', 'item_id', 'label', 'time']
 data_df.head()
 
