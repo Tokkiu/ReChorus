@@ -46,8 +46,8 @@ if DATASET == 'ml-100k':
 elif DATASET == 'ml-1m':
     item_df = meta_df.copy()
     item_df.columns = ['item_id', 'title', 'genre']
-    item_df['title'] = item_df['title'].apply(lambda x: x.decode('ISO-8859-1'))
-    item_df['genre'] = item_df['genre'].apply(lambda x: x.decode('ISO-8859-1'))
+    # item_df['title'] = item_df['title'].apply(lambda x: x.decode('ISO-8859-1'))
+    # item_df['genre'] = item_df['genre'].apply(lambda x: x.decode('ISO-8859-1'))
     genre_dict = dict()
     for g in genres:
         genre_dict[g] = np.zeros(len(item_df), dtype=np.int32)
