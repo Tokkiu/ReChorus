@@ -39,7 +39,8 @@ class MultiHeadAttention(nn.Module):
 
         # calculate attention using function we will define next
         output = self.scaled_dot_product_attention(q, k, v, self.d_k, mask)
-
+        if keep_head:
+            return output
         # concatenate heads and put through final linear layer
         output = output.transpose(-2, -3).reshape(origin_shape)
         return output
@@ -78,8 +79,8 @@ class TransformerLayer(nn.Module):
         self.layer_norm2 = nn.LayerNorm(d_model)
         self.dropout2 = nn.Dropout(dropout)
 
-    def forward(self, seq, mask=None):
-        context = self.masked_attn_head(seq, seq, seq, mask)
+    def forward(self, seq, mask=None, keep_head=False):
+        context = self.masked_attn_head(seq, seq, seq, mask, keep_head=keep_head)
         context = self.layer_norm1(self.dropout1(context) + seq)
         output = self.linear1(context).relu()
         output = self.linear2(output)
