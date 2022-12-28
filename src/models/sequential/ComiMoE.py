@@ -76,12 +76,12 @@ class ComiMoE(SequentialModel):
         lengths = feed_dict['lengths']  # [batch_size]
         batch_size, seq_len = history.shape
 
-        his_vectors = self.i_embeddings(history)
+        his_item_vectors = self.i_embeddings(history)
 
-        his_vectors = [expert(history, lengths, his_vectors) for expert in self.experts]
+        his_vectors = [expert(history, lengths, his_item_vectors) for expert in self.experts]
         his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
 
-        vu = self.primary(history, lengths, his_vectors).squeeze(1)
+        vu = self.primary(history, lengths, his_item_vectors).squeeze(1)
         gates, load = self.noisy_top_k_gating(vu, self.training)
         val, gtx = gates.topk(1)
         interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.hidden_size))
