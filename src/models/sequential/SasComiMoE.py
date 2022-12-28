@@ -232,6 +232,7 @@ class SasComiMoE(SequentialModel):
 
         if self.noisy_gating and self.k < self.num_experts and train:
             load = (self._prob_in_top_k(clean_logits, noisy_logits, noise_stddev, top_logits)).sum(0)
+            import pdb; pdb.set_trace()
         else:
             load = self._gates_to_load(gates)
         return gates, load
