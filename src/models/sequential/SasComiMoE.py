@@ -49,7 +49,7 @@ class SasComiMoE(SequentialModel):
         super().__init__(args, corpus)
         self.emb_size = args.emb_size
         self.attn_size = args.attn_size
-        self.k = 1
+        self.k = 2
         self.num_experts = args.K
         self.add_pos = args.add_pos
         self.max_his = args.history_max
