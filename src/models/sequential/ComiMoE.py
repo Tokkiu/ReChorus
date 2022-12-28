@@ -86,7 +86,7 @@ class ComiMoE(SequentialModel):
         vu = self.primary(history, lengths, his_item_vectors).squeeze(1)
         gates, load = self.noisy_top_k_gating(vu, self.training)
         val, gtx = gates.topk(1)
-        interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.hidden_size))
+        interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
 
         i_vectors = self.i_embeddings(i_ids)
         if feed_dict['phase'] == 'train':
