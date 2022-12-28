@@ -6,7 +6,7 @@ import numpy as np
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, n_heads, kq_same=False, bias=True):
+    def __init__(self, d_model, n_heads, kq_same=False, bias=True, keep_head=False):
         super().__init__()
         """
         It has projection layer for getting keys, queries and values. Followed by attention.
@@ -15,8 +15,12 @@ class MultiHeadAttention(nn.Module):
         self.h = n_heads
         self.d_k = self.d_model // self.h
         self.kq_same = kq_same
+        self.keep_head = keep_head
 
         if not kq_same:
+            # if keep_head:
+            #     self.q_linear = nn.Linear(d_model*self.h, d_model, bias=bias)
+            # else:
             self.q_linear = nn.Linear(d_model, d_model, bias=bias)
         self.k_linear = nn.Linear(d_model, d_model, bias=bias)
         self.v_linear = nn.Linear(d_model, d_model, bias=bias)
@@ -25,8 +29,12 @@ class MultiHeadAttention(nn.Module):
         new_x_shape = x.size()[:-1] + (self.h, self.d_k)
         return x.view(*new_x_shape).transpose(-2, -3)
 
-    def forward(self, q, k, v, mask=None, keep_head=False):
+    def forward(self, q, k, v, mask=None):
         origin_shape = q.size()
+        print("origin_shape", origin_shape)
+        print("d_model", self.d_model)
+        print("heads", self.h)
+        print("kq_same", self.kq_same)
 
         # perform linear operation and split into h heads
         if not self.kq_same:
