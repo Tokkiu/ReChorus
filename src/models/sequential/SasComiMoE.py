@@ -44,7 +44,7 @@ class SasComiMoE(SequentialModel):
         parser.add_argument('--use_scaler', type=int, default=1,
                             help='scale experts by weight.')
         parser.add_argument('--moe_loss', type=float, default=0.01,
-                            help='moe loss weight.')pre_softmax
+                            help='moe loss weight.')
         parser.add_argument('--pre_softmax', type=int, default=0,
                             help='pre softmax.')
         return SequentialModel.parse_model_args(parser)
