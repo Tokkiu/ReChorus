@@ -83,7 +83,7 @@ class SASRecMI(SequentialModel):
         for block in self.transformer_block:
             his_vectors = block(his_vectors, attn_mask)
         his_vectors = self.transformer_final(his_vectors, attn_mask)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         his_vectors = his_vectors * valid_his[:, :, None].unsqueeze(1).float()
 
         his_vector = his_vectors[torch.arange(batch_size), :, lengths - 1, :]
@@ -91,5 +91,6 @@ class SASRecMI(SequentialModel):
         # ↑ average pooling is shown to be more effective than the most recent embedding
 
         i_vectors = self.i_embeddings(i_ids)
-        prediction = (his_vector[:, None, :] * i_vectors).sum(-1)
+        # prediction = (his_vector[:, None, :] * i_vectors).sum(-1)
+        prediction = torch.matmul(his_vector, i_vectors.transpose(-1, -2)).max(1)[0]
         return {'prediction': prediction.view(batch_size, -1)}
