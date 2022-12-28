@@ -50,7 +50,7 @@ class ComiMoE(SequentialModel):
         ])
 
         self.primary = ComiExpert(args, corpus, k=1)
-
+        self.noisy_gating = True
         self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.K), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.K), requires_grad=True)
 
