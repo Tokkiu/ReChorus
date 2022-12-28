@@ -44,7 +44,6 @@ class ComiMoE(SequentialModel):
         self.add_pos = args.add_pos
         self.max_his = args.history_max
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
-        self._define_params()
         self.experts = nn.ModuleList([
             ComiExpert(args, corpus, k=1)
             for _ in range(self.K)
@@ -59,7 +58,7 @@ class ComiMoE(SequentialModel):
         self.softmax = nn.Softmax(1)
         self.register_buffer("mean", torch.tensor([0.0]))
         self.register_buffer("std", torch.tensor([1.0]))
-
+        self._define_params()
         self.apply(self.init_weights)
 
     def _define_params(self):
