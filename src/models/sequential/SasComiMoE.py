@@ -31,7 +31,9 @@ class SasComiMoE(SequentialModel):
                             help='Size of embedding vectors.')
         parser.add_argument('--attn_size', type=int, default=8,
                             help='Size of attention vectors.')
-        parser.add_argument('--K', type=int, default=2,
+        parser.add_argument('--K', type=int, default=4,
+                            help='Number of hidden intent.')
+        parser.add_argument('--top', type=int, default=2,
                             help='Number of hidden intent.')
         parser.add_argument('--add_pos', type=int, default=1,
                             help='Whether add position embedding.')
@@ -49,7 +51,7 @@ class SasComiMoE(SequentialModel):
         super().__init__(args, corpus)
         self.emb_size = args.emb_size
         self.attn_size = args.attn_size
-        self.k = 2
+        self.k = args.top
         self.num_experts = args.K
         self.add_pos = args.add_pos
         self.max_his = args.history_max
@@ -119,13 +121,15 @@ class SasComiMoE(SequentialModel):
 
         vu = self.primary(history, lengths, his_sas_vectors).squeeze(1)
         gates, load = self.noisy_top_k_gating(vu, self.training)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
         loss *= self.loss_coef
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
-        val, gtx = gates.topk(1)
+        val, gtx = gates.topk(self.k)
+        if not self.training:
+            print(gtx.reshape(16, -1))
         interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
 
         i_vectors = self.i_embeddings(i_ids)
