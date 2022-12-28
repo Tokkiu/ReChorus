@@ -226,6 +226,8 @@ class SasComiMoE(SequentialModel):
             logits = clean_logits
 
         # calculate topk + 1 that will be needed for the noisy gates
+        logits = self.softmax(logits)
+        import pdb; pdb.set_trace()
         top_logits, top_indices = logits.topk(min(self.k + 1, self.num_experts), dim=1)
         top_k_logits = top_logits[:, :self.k]
         top_k_indices = top_indices[:, :self.k]
