@@ -83,6 +83,7 @@ class TransformerLayer(nn.Module):
 
         if keep_head:
             d_model = int(d_model/n_heads)
+            self.linear_head = nn.Linear(d_model, int(d_model*n_heads))
         self.keep_head = keep_head
         # Two layer norm layer and two dropout layer
         self.layer_norm1 = nn.LayerNorm(d_model)
@@ -99,7 +100,12 @@ class TransformerLayer(nn.Module):
         print("context", context.shape)
         if self.keep_head:
             context = self.layer_norm1(self.dropout1(context))
-            return context
+            output = self.linear1(context).relu()
+            output = self.linear2(output)
+            output = self.layer_norm2(self.dropout2(output) + context)
+            output = self.linear_head(output)
+            return output
+
         context = self.layer_norm1(self.dropout1(context) + seq)
         output = self.linear1(context).relu()
         output = self.linear2(output)
