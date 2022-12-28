@@ -33,6 +33,7 @@ class MultiHeadAttention(nn.Module):
             q = self.head_split(self.q_linear(q))
         else:
             q = self.head_split(self.k_linear(q))
+        import pdb; pdb.set_trace()
         k = self.head_split(self.k_linear(k))
         v = self.head_split(self.v_linear(v))
 
