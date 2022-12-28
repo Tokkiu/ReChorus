@@ -18,10 +18,10 @@ class MultiHeadAttention(nn.Module):
         self.keep_head = keep_head
 
         if not kq_same:
-            # if keep_head:
-            #     self.q_linear = nn.Linear(d_model*self.h, d_model, bias=bias)
-            # else:
-            self.q_linear = nn.Linear(d_model, d_model, bias=bias)
+            if keep_head:
+                self.q_linear = nn.Linear(d_model*self.h, d_model, bias=bias)
+            else:
+                self.q_linear = nn.Linear(d_model, d_model, bias=bias)
         self.k_linear = nn.Linear(d_model, d_model, bias=bias)
         self.v_linear = nn.Linear(d_model, d_model, bias=bias)
 
