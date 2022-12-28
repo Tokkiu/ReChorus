@@ -29,12 +29,12 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, q, k, v, mask=None):
         origin_shape = q.size()
-        print("origin_shape", origin_shape)
-        print("k", k.shape)
-        print("v", v.shape)
-        print("d_model", self.d_model)
-        print("heads", self.h)
-        print("kq_same", self.kq_same)
+        # print("origin_shape", origin_shape)
+        # print("k", k.shape)
+        # print("v", v.shape)
+        # print("d_model", self.d_model)
+        # print("heads", self.h)
+        # print("kq_same", self.kq_same)
 
         # perform linear operation and split into h heads
         if not self.kq_same:
@@ -45,10 +45,10 @@ class MultiHeadAttention(nn.Module):
         k = self.head_split(self.k_linear(k)) #[256, 4, 20, 16])
         v = self.head_split(self.v_linear(v))
 
-        print("nq", q.shape)
-        print("nk", k.shape)
-        print("nv", v.shape)
-        print("d_k", self.d_k)
+        # print("nq", q.shape)
+        # print("nk", k.shape)
+        # print("nv", v.shape)
+        # print("d_k", self.d_k)
         # calculate attention using function we will define next
         output = self.scaled_dot_product_attention(q, k, v, self.d_k, mask)
         if self.keep_head:
@@ -97,7 +97,6 @@ class TransformerLayer(nn.Module):
 
     def forward(self, seq, mask=None):
         context = self.masked_attn_head(seq, seq, seq, mask)
-        print("context", context.shape)
         if self.keep_head:
             context = self.layer_norm1(self.dropout1(context))
             output = self.linear1(context).relu()
