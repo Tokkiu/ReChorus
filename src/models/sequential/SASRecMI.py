@@ -55,7 +55,7 @@ class SASRecMI(SequentialModel):
             for _ in range(self.num_layers-1)
         ])
 
-        self.transformer_final = layers.TransformerLayer(d_model=int(self.emb_size / self.num_heads), d_ff=self.emb_size,
+        self.transformer_final = layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size,
                                     n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False, keep_head=True)
 
