@@ -38,6 +38,8 @@ class SasComiMoE(SequentialModel):
                             help='Number of self-attention layers.')
         parser.add_argument('--num_heads', type=int, default=4,
                             help='Number of attention heads.')
+        parser.add_argument('--use_scaler', type=int, default=1,
+                            help='scale experts by weight.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -49,6 +51,7 @@ class SasComiMoE(SequentialModel):
         self.num_experts = args.K
         self.add_pos = args.add_pos
         self.max_his = args.history_max
+        self.use_scaler = args.use_scaler == 1
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self.max_his = args.history_max
         self.num_layers = args.num_layers
@@ -113,6 +116,8 @@ class SasComiMoE(SequentialModel):
 
         vu = self.primary(history, lengths, his_sas_vectors).squeeze(1)
         gates, load = self.noisy_top_k_gating(vu, self.training)
+        if self.use_scaler:
+            his_vectors = his_vectors * gates.unsqueeze(2)
         val, gtx = gates.topk(1)
         interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
 
