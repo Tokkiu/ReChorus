@@ -44,7 +44,9 @@ class SasComiMoE(SequentialModel):
         parser.add_argument('--use_scaler', type=int, default=1,
                             help='scale experts by weight.')
         parser.add_argument('--moe_loss', type=float, default=0.01,
-                            help='moe loss weight.')
+                            help='moe loss weight.')pre_softmax
+        parser.add_argument('--pre_softmax', type=int, default=0,
+                            help='pre softmax.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -56,6 +58,7 @@ class SasComiMoE(SequentialModel):
         self.add_pos = args.add_pos
         self.max_his = args.history_max
         self.use_scaler = args.use_scaler == 1
+        self.pre_softmax = args.pre_softmax == 1
         self.loss_coef = args.moe_loss
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self.max_his = args.history_max
@@ -226,11 +229,15 @@ class SasComiMoE(SequentialModel):
             logits = clean_logits
 
         # calculate topk + 1 that will be needed for the noisy gates
-        logits = self.softmax(logits)
+        if self.pre_softmax:
+            logits = self.softmax(logits)
         top_logits, top_indices = logits.topk(min(self.k + 1, self.num_experts), dim=1)
         top_k_logits = top_logits[:, :self.k]
         top_k_indices = top_indices[:, :self.k]
-        top_k_gates = top_k_logits
+        if self.pre_softmax:
+            top_k_gates = top_k_logits
+        else:
+            top_k_gates = self.softmax(top_k_logits)
 
         zeros = torch.zeros_like(logits, requires_grad=True)
         gates = zeros.scatter(1, top_k_indices, top_k_gates)
