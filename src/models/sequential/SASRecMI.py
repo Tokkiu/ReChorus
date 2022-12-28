@@ -50,10 +50,14 @@ class SASRecMI(SequentialModel):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
         self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
         self.transformer_block = nn.ModuleList([
-            layers.TransformerLayer(d_model=int(self.emb_size/self.num_heads), d_ff=self.emb_size, n_heads=self.num_heads,
+            layers.TransformerLayer(d_model=int(self.emb_size), d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
-            for _ in range(self.num_layers)
+            for _ in range(self.num_layers-1)
         ])
+
+        self.transformer_final = layers.TransformerLayer(d_model=int(self.emb_size / self.num_heads), d_ff=self.emb_size,
+                                    n_heads=self.num_heads,
+                                    dropout=self.dropout, kq_same=False)
 
     def forward(self, feed_dict):
         self.check_list = []
@@ -78,6 +82,8 @@ class SASRecMI(SequentialModel):
         # attn_mask = valid_his.view(batch_size, 1, 1, seq_len)
         for block in self.transformer_block:
             his_vectors = block(his_vectors, attn_mask)
+        his_vectors = self.transformer_final(his_vectors, attn_mask, keep_head=True)
+
         import pdb; pdb.set_trace()
         his_vectors = his_vectors * valid_his[:, :, None].float()
 
