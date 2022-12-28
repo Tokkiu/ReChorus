@@ -42,6 +42,7 @@ class ComiMoE(SequentialModel):
         self.attn_size = args.attn_size
         self.K = args.K
         self.k = args.K
+        self.num_experts = args.K
         self.add_pos = args.add_pos
         self.max_his = args.history_max
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
