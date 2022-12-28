@@ -52,6 +52,7 @@ class SasComiMoE(SequentialModel):
         self.add_pos = args.add_pos
         self.max_his = args.history_max
         self.use_scaler = args.use_scaler == 1
+        self.loss_coef = 1e-2
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self.max_his = args.history_max
         self.num_layers = args.num_layers
@@ -116,6 +117,9 @@ class SasComiMoE(SequentialModel):
 
         vu = self.primary(history, lengths, his_sas_vectors).squeeze(1)
         gates, load = self.noisy_top_k_gating(vu, self.training)
+        importance = gates.sum(0)
+        loss = self.cv_squared(importance) + self.cv_squared(load)
+        loss *= self.loss_coef
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
         val, gtx = gates.topk(1)
@@ -132,8 +136,24 @@ class SasComiMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
-        return {'prediction': prediction.view(batch_size, -1)}
+        return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss},
 
+    def cv_squared(self, x):
+        """The squared coefficient of variation of a sample.
+        Useful as a loss to encourage a positive distribution to be more uniform.
+        Epsilons added for numerical stability.
+        Returns 0 for an empty Tensor.
+        Args:
+        x: a `Tensor`.
+        Returns:
+        a `Scalar`.
+        """
+        eps = 1e-10
+        # if only num_experts = 1
+
+        if x.shape[0] == 1:
+            return torch.tensor([0], device=x.device, dtype=x.dtype)
+        return x.float().var() / (x.float().mean()**2 + eps)
 
     def _gates_to_load(self, gates):
         """Compute the true load per expert, given the gates.
