@@ -52,7 +52,7 @@ class SASRecMI(SequentialModel):
         self.transformer_block = nn.ModuleList([
             layers.TransformerLayer(d_model=int(self.emb_size), d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
-            for _ in range(self.num_layers-1)
+            for _ in range(self.num_layers)
         ])
 
         self.transformer_final = layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size,

@@ -99,10 +99,10 @@ class TransformerLayer(nn.Module):
         context = self.masked_attn_head(seq, seq, seq, mask)
         if self.keep_head:
             context = self.layer_norm1(self.dropout1(context))
-            output = self.linear1(context).relu()
-            output = self.linear2(output)
-            output = self.layer_norm2(self.dropout2(output) + context)
-            output = self.linear_head(output)
+            output = self.linear_head(context)
+            # output = self.linear1(context).relu()
+            # output = self.linear2(output)
+            # output = self.layer_norm2(self.dropout2(output) + context)
             return output
 
         context = self.layer_norm1(self.dropout1(context) + seq)
