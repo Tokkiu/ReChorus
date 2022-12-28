@@ -18,6 +18,7 @@ import numpy as np
 from models.BaseModel import SequentialModel
 from utils import layers
 
+from torch.distributions.normal import Normal
 
 class SasComiMoE(SequentialModel):
     reader = 'SeqReader'
@@ -40,19 +41,20 @@ class SasComiMoE(SequentialModel):
                             help='Number of attention heads.')
         parser.add_argument('--use_scaler', type=int, default=1,
                             help='scale experts by weight.')
+        parser.add_argument('--moe_loss', type=float, default=0.01,
+                            help='moe loss weight.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
         super().__init__(args, corpus)
         self.emb_size = args.emb_size
         self.attn_size = args.attn_size
-        self.K = args.K
-        self.k = args.K
+        self.k = 1
         self.num_experts = args.K
         self.add_pos = args.add_pos
         self.max_his = args.history_max
         self.use_scaler = args.use_scaler == 1
-        self.loss_coef = 1e-2
+        self.loss_coef = args.moe_loss
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self.max_his = args.history_max
         self.num_layers = args.num_layers
@@ -60,13 +62,13 @@ class SasComiMoE(SequentialModel):
 
         self.experts = nn.ModuleList([
             ComiExpert(args, corpus, k=1)
-            for _ in range(self.K)
+            for _ in range(self.num_experts)
         ])
 
         self.primary = ComiExpert(args, corpus, k=1)
         self.noisy_gating = True
-        self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.K), requires_grad=True)
-        self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.K), requires_grad=True)
+        self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
+        self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
 
         self.softplus = nn.Softplus()
         self.softmax = nn.Softmax(1)
@@ -117,6 +119,7 @@ class SasComiMoE(SequentialModel):
 
         vu = self.primary(history, lengths, his_sas_vectors).squeeze(1)
         gates, load = self.noisy_top_k_gating(vu, self.training)
+        import pdb; pdb.set_trace()
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
         loss *= self.loss_coef
@@ -136,7 +139,7 @@ class SasComiMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
-        return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss},
+        return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
 
     def cv_squared(self, x):
         """The squared coefficient of variation of a sample.
