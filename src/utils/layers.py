@@ -25,7 +25,7 @@ class MultiHeadAttention(nn.Module):
         new_x_shape = x.size()[:-1] + (self.h, self.d_k)
         return x.view(*new_x_shape).transpose(-2, -3)
 
-    def forward(self, q, k, v, mask=None):
+    def forward(self, q, k, v, mask=None, keep_head=False):
         origin_shape = q.size()
 
         # perform linear operation and split into h heads
@@ -33,8 +33,8 @@ class MultiHeadAttention(nn.Module):
             q = self.head_split(self.q_linear(q))
         else:
             q = self.head_split(self.k_linear(q))
-        import pdb; pdb.set_trace()
-        k = self.head_split(self.k_linear(k))
+        # import pdb; pdb.set_trace()
+        k = self.head_split(self.k_linear(k)) #[256, 4, 20, 16])
         v = self.head_split(self.v_linear(v))
 
         # calculate attention using function we will define next
