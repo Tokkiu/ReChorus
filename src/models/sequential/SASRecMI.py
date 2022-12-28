@@ -82,7 +82,7 @@ class SASRecMI(SequentialModel):
         # attn_mask = valid_his.view(batch_size, 1, 1, seq_len)
         for block in self.transformer_block:
             his_vectors = block(his_vectors, attn_mask)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         his_vectors = self.transformer_final(his_vectors, attn_mask)
 
         his_vectors = his_vectors * valid_his[:, :, None].float()
