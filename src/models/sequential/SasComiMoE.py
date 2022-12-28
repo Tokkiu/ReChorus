@@ -231,7 +231,7 @@ class SasComiMoE(SequentialModel):
         top_logits, top_indices = logits.topk(min(self.k + 1, self.num_experts), dim=1)
         top_k_logits = top_logits[:, :self.k]
         top_k_indices = top_indices[:, :self.k]
-        top_k_gates = self.softmax(top_k_logits)
+        top_k_gates = top_k_logits
 
         zeros = torch.zeros_like(logits, requires_grad=True)
         gates = zeros.scatter(1, top_k_indices, top_k_gates)
