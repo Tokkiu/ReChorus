@@ -81,6 +81,8 @@ class TransformerLayer(nn.Module):
         # Multi-Head Attention Block
         self.masked_attn_head = MultiHeadAttention(d_model, n_heads, kq_same=kq_same, keep_head=keep_head)
 
+        if keep_head:
+            d_model = int(d_model/n_heads)
         # Two layer norm layer and two dropout layer
         self.layer_norm1 = nn.LayerNorm(d_model)
         self.dropout1 = nn.Dropout(dropout)
@@ -93,6 +95,7 @@ class TransformerLayer(nn.Module):
 
     def forward(self, seq, mask=None):
         context = self.masked_attn_head(seq, seq, seq, mask)
+        print("context", context.shape)
         context = self.layer_norm1(self.dropout1(context) + seq)
         output = self.linear1(context).relu()
         output = self.linear2(output)
