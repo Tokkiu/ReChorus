@@ -96,11 +96,8 @@ class TransformerLayer(nn.Module):
 
     def forward(self, seq, mask=None):
         context = self.masked_attn_head(seq, seq, seq, mask)
-        print("context", context.shape)
         if self.keep_head:
-            context = self.layer_norm1(self.dropout1(context))
-        else:
-            context = self.layer_norm1(self.dropout1(context) + seq)
+            return context
         output = self.linear1(context).relu()
         output = self.linear2(output)
         output = self.layer_norm2(self.dropout2(output) + context)
