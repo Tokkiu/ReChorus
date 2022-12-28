@@ -228,7 +228,6 @@ class ComiExpert(SequentialModel):
         if self.add_pos:
             position = (lengths[:, None] - self.len_range[None, :seq_len]) * valid_his
             pos_vectors = self.p_embeddings(position)
-            print(position.shape, pos_vectors.shape, his_vectors.shape)
             his_pos_vectors = his_vectors + pos_vectors
         else:
             his_pos_vectors = his_vectors
