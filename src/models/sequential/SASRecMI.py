@@ -83,7 +83,7 @@ class SASRecMI(SequentialModel):
         for block in self.transformer_block:
             his_vectors = block(his_vectors, attn_mask)
         import pdb; pdb.set_trace()
-        his_vectors = self.transformer_final(his_vectors, attn_mask, keep_head=True)
+        his_vectors = self.transformer_final(his_vectors, attn_mask)
 
         his_vectors = his_vectors * valid_his[:, :, None].float()
 
