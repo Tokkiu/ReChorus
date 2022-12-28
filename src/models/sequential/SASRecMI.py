@@ -49,7 +49,7 @@ class SASRecMI(SequentialModel):
     def _define_params(self):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
         self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
-
+        import pdb;pdb.set_trace()
         self.transformer_block = nn.ModuleList([
             layers.TransformerLayer(d_model=self.emb_size/self.num_heads, d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
