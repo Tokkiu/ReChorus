@@ -68,14 +68,14 @@ class MultiHeadAttention(nn.Module):
 
 
 class TransformerLayer(nn.Module):
-    def __init__(self, d_model, d_ff, n_heads, dropout=0, kq_same=False):
+    def __init__(self, d_model, d_ff, n_heads, dropout=0, kq_same=False, keep_head=False):
         super().__init__()
         """
         This is a Basic Block of Transformer. It contains one Multi-head attention object. 
         Followed by layer norm and position wise feedforward net and dropout layer.
         """
         # Multi-Head Attention Block
-        self.masked_attn_head = MultiHeadAttention(d_model, n_heads, kq_same=kq_same)
+        self.masked_attn_head = MultiHeadAttention(d_model, n_heads, kq_same=kq_same, keep_head=keep_head)
 
         # Two layer norm layer and two dropout layer
         self.layer_norm1 = nn.LayerNorm(d_model)
@@ -87,8 +87,8 @@ class TransformerLayer(nn.Module):
         self.layer_norm2 = nn.LayerNorm(d_model)
         self.dropout2 = nn.Dropout(dropout)
 
-    def forward(self, seq, mask=None, keep_head=False):
-        context = self.masked_attn_head(seq, seq, seq, mask, keep_head=keep_head)
+    def forward(self, seq, mask=None):
+        context = self.masked_attn_head(seq, seq, seq, mask)
         context = self.layer_norm1(self.dropout1(context) + seq)
         output = self.linear1(context).relu()
         output = self.linear2(output)

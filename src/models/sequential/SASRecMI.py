@@ -57,7 +57,7 @@ class SASRecMI(SequentialModel):
 
         self.transformer_final = layers.TransformerLayer(d_model=int(self.emb_size / self.num_heads), d_ff=self.emb_size,
                                     n_heads=self.num_heads,
-                                    dropout=self.dropout, kq_same=False)
+                                    dropout=self.dropout, kq_same=False, keep_head=True)
 
     def forward(self, feed_dict):
         self.check_list = []
