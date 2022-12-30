@@ -19,7 +19,14 @@ from models.BaseModel import SequentialModel
 from utils import layers
 
 from torch.distributions.normal import Normal
-
+torch.set_printoptions(
+    precision=2,    # 精度，保留小数点后几位，默认4
+    threshold=np.inf,
+    edgeitems=3,
+    linewidth=200,  # 每行最多显示的字符数，默认80，超过则换行显示
+    profile=None,
+    sci_mode=False  # 用科学技术法显示数据，默认True
+)
 class EvoMoE(SequentialModel):
     reader = 'SeqReader'
     runner = 'BaseRunner'
