@@ -20,7 +20,7 @@ from utils import layers
 
 from torch.distributions.normal import Normal
 
-class SasComiMoE(SequentialModel):
+class EvoMoE(SequentialModel):
     reader = 'SeqReader'
     runner = 'BaseRunner'
     extra_log_args = ['emb_size', 'attn_size', 'K']
