@@ -47,6 +47,8 @@ class EvoMoE(SequentialModel):
                             help='moe loss weight.')
         parser.add_argument('--pre_softmax', type=int, default=0,
                             help='pre softmax.')
+        parser.add_argument('--print_batch', type=int, default=10,
+                            help='pre softmax.')
         parser.add_argument('--fusion', type=str, default='top',
                             help='pre softmax.')
         return SequentialModel.parse_model_args(parser)
@@ -67,6 +69,7 @@ class EvoMoE(SequentialModel):
         self.num_layers = args.num_layers
         self.num_heads = args.num_heads
         self.fusion = args.fusion
+        self.print_batch = args.print_batch
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
@@ -127,7 +130,13 @@ class EvoMoE(SequentialModel):
         his_vectors = [expert(history, lengths, his_sas_vectors) for expert in self.experts]
         his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
 
-        vu = self.primary(history, lengths, his_sas_vectors).squeeze(1)
+        vu, atten = self.primary(history, lengths, his_sas_vectors)
+        vu = vu.squeeze(1)
+        print_gates = False
+        if not self.training and torch.randn(1) < -1:
+            print(atten[:self.print_batch])
+            print_gates = True
+
         gates, load = self.noisy_top_k_gating(vu, self.training)
         # import pdb; pdb.set_trace()
         importance = gates.sum(0)
@@ -137,6 +146,8 @@ class EvoMoE(SequentialModel):
             his_vectors = his_vectors * gates.unsqueeze(2)
 
         if self.fusion == 'fusion':
+            if print_gates:
+                print(gates[:self.print_batch])
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
         elif self.fusion == 'top':
             val, gtx = gates.topk(self.k)
@@ -317,4 +328,4 @@ class ComiExpert(SequentialModel):
         attn_score = attn_score.masked_fill(torch.isnan(attn_score), 0)
         interest_vectors = (his_vectors[:, None, :, :] * attn_score[:, :, :, None]).sum(-2)  # bsz, K, emb
 
-        return interest_vectors
+        return interest_vectors, attn_score
