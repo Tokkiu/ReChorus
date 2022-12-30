@@ -127,7 +127,7 @@ class EvoMoE(SequentialModel):
         his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
 
-        his_vectors = [expert(history, lengths, his_sas_vectors) for expert in self.experts]
+        his_vectors = [expert(history, lengths, his_sas_vectors)[0] for expert in self.experts]
         his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
 
         vu, atten = self.primary(history, lengths, his_sas_vectors)
