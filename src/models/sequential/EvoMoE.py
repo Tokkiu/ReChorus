@@ -56,6 +56,8 @@ class EvoMoE(SequentialModel):
                             help='pre softmax.')
         parser.add_argument('--print_batch', type=int, default=10,
                             help='pre softmax.')
+        parser.add_argument('--print_seq', type=int, default=0,
+                            help='pre softmax.')
         parser.add_argument('--fusion', type=str, default='top',
                             help='pre softmax.')
         parser.add_argument('--temp', type=float, default=-1.0,
@@ -80,6 +82,7 @@ class EvoMoE(SequentialModel):
         self.num_heads = args.num_heads
         self.fusion = args.fusion
         self.print_batch = args.print_batch
+        self.print_seq = args.print_seq
         self.gumbel_temperature = args.temp
         self.temp_moe = self.gumbel_temperature > 0
         if self.fusion not in ['fusion','top']:
@@ -146,6 +149,8 @@ class EvoMoE(SequentialModel):
         vu = vu.squeeze(1)
         print_gates = False
         if not self.training:
+            if self.print_seq > 0:
+                print(history[:self.print_seq])
             # print((atten[:self.print_batch]*100).int())
             print_gates = True
 
