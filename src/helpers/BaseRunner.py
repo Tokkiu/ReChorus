@@ -167,6 +167,7 @@ class BaseRunner(object):
                         collate_fn=dataset.collate_batch, pin_memory=self.pin_memory)
         for batch in tqdm(dl, leave=False, desc='Epoch {:<3}'.format(epoch), ncols=100, mininterval=1):
             batch = utils.batch_to_gpu(batch, model.device)
+            batch['train_epoch'] = epoch
             model.optimizer.zero_grad()
             out_dict = model(batch)
             loss = model.loss(out_dict)

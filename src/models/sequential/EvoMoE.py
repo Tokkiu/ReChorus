@@ -62,7 +62,8 @@ class EvoMoE(SequentialModel):
                             help='pre softmax.')
         parser.add_argument('--temp', type=float, default=-1.0,
                             help='gumbel_temperature.')
-
+        parser.add_argument('--change_temp', type=int, default=100000,
+                            help='change_temp.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -83,7 +84,9 @@ class EvoMoE(SequentialModel):
         self.fusion = args.fusion
         self.print_batch = args.print_batch
         self.print_seq = args.print_seq
-        self.gumbel_temperature = args.temp
+        self.gumbel_temperature = 2
+        self.gumbel_temperature_arg = args.temp
+        self.change_temp_epoch = args.change_temp
         self.temp_moe = self.gumbel_temperature > 0
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
@@ -119,6 +122,8 @@ class EvoMoE(SequentialModel):
 
     def forward(self, feed_dict):
         self.check_list = []
+        if feed_dict['train_epoch'] > self.change_temp_epoch:
+            self.gumbel_temperature = self.gumbel_temperature_arg
         i_ids = feed_dict['item_id']  # [batch_size, -1]
         history = feed_dict['history_items']  # [batch_size, history_max]
         lengths = feed_dict['lengths']  # [batch_size]
