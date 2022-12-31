@@ -58,6 +58,9 @@ class EvoMoE(SequentialModel):
                             help='pre softmax.')
         parser.add_argument('--fusion', type=str, default='top',
                             help='pre softmax.')
+        parser.add_argument('--temp', type=float, default=-1.0,
+                            help='gumbel_temperature.')
+
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -77,6 +80,8 @@ class EvoMoE(SequentialModel):
         self.num_heads = args.num_heads
         self.fusion = args.fusion
         self.print_batch = args.print_batch
+        self.gumbel_temperature = args.temp
+        self.temp_moe = self.gumbel_temperature > 0
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
@@ -257,13 +262,18 @@ class EvoMoE(SequentialModel):
 
         # calculate topk + 1 that will be needed for the noisy gates
         if self.pre_softmax:
-            logits = self.softmax(logits)
+            if self.temp_moe:
+                logits = self.softmax(logits/self.gumbel_temperature)
+            else:
+                logits = self.softmax(logits)
         top_logits, top_indices = logits.topk(min(self.k + 1, self.num_experts), dim=1)
         top_k_logits = top_logits[:, :self.k]
         top_k_indices = top_indices[:, :self.k]
         if self.pre_softmax:
             top_k_gates = top_k_logits
         else:
+            if self.temp_moe:
+                top_k_logits /= self.gumbel_temperature
             top_k_gates = self.softmax(top_k_logits)
 
         zeros = torch.zeros_like(logits, requires_grad=True)
