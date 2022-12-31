@@ -169,6 +169,7 @@ class BaseRunner(object):
             batch = utils.batch_to_gpu(batch, model.device)
             batch['train_epoch'] = epoch
             model.optimizer.zero_grad()
+            import pdb; pdb.set_trace()
             out_dict = model(batch)
             loss = model.loss(out_dict)
             loss.backward()

@@ -122,6 +122,7 @@ class EvoMoE(SequentialModel):
 
     def forward(self, feed_dict):
         self.check_list = []
+        import pdb; pdb.set_trace()
         if feed_dict['train_epoch'] > self.change_temp_epoch:
             print("gumbel_temperature is set to ", self.gumbel_temperature_arg)
             self.gumbel_temperature = self.gumbel_temperature_arg
