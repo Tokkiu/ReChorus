@@ -40,7 +40,7 @@ class EvoMoE(SequentialModel):
                             help='Size of attention vectors.')
         parser.add_argument('--K', type=int, default=4,
                             help='Number of hidden intent.')
-        parser.add_argument('--top', type=int, default=2,
+        parser.add_argument('--top', type=int, default=4,
                             help='Number of hidden intent.')
         parser.add_argument('--add_pos', type=int, default=1,
                             help='Whether add position embedding.')
