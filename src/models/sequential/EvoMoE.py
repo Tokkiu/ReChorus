@@ -163,7 +163,7 @@ class EvoMoE(SequentialModel):
             his_vectors = his_vectors * gates.unsqueeze(2)
 
         if self.fusion == 'fusion':
-            if print_gates:
+            if print_gates and self.print_batch > 0:
                 print(gates[:self.print_batch])
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
         elif self.fusion == 'top':
