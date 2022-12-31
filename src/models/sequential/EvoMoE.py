@@ -145,8 +145,8 @@ class EvoMoE(SequentialModel):
         vu, atten = self.primary(history, lengths, his_sas_vectors)
         vu = vu.squeeze(1)
         print_gates = False
-        if not self.training and torch.randn(1) < -1:
-            print((atten[:self.print_batch]*100).int())
+        if not self.training:
+            # print((atten[:self.print_batch]*100).int())
             print_gates = True
 
         gates, load = self.noisy_top_k_gating(vu, self.training)
