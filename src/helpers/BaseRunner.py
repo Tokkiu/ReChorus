@@ -112,7 +112,6 @@ class BaseRunner(object):
                 gc.collect()
                 torch.cuda.empty_cache()
                 loss = self.fit(data_dict['train'], epoch=epoch + 1)
-                model.update_per_epoch(epoch)
                 training_time = self._check_time()
 
                 # Observe selected tensors

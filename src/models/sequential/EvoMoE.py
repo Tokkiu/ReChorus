@@ -92,6 +92,7 @@ class EvoMoE(SequentialModel):
         self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.999995)
         self.anneal_moe = self.max_temp > 0
         self.curr_temp = self.max_temp
+        self.num_updates = 0
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
@@ -191,6 +192,9 @@ class EvoMoE(SequentialModel):
         else:
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
+
+        self.update_per_epoch(self.num_updates)
+        self.num_updates += 1
 
         return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
 
