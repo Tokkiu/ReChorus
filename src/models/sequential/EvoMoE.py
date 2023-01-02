@@ -219,7 +219,8 @@ class EvoMoE(SequentialModel):
         self.curr_temp = max(
             self.max_temp * self.temp_decay ** num_updates, self.min_temp
         )
-        print("temp is set to", self.curr_temp)
+    def log_per_epoch(self):
+        return "temp set " + self.curr_temp
 
     def _gates_to_load(self, gates):
         """Compute the true load per expert, given the gates.

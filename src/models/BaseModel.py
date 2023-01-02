@@ -173,8 +173,8 @@ class GeneralModel(BaseModel):
         self.dropout = args.dropout
         self.test_all = args.test_all
 
-    def update_per_epoch(self):
-        pass
+    def log_per_epoch(self):
+        return ""
 
     def loss(self, out_dict: dict) -> torch.Tensor:
         """

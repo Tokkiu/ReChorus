@@ -137,6 +137,7 @@ class BaseRunner(object):
                         (hasattr(model, 'stage') and model.stage == 1):
                     model.save_model()
                     logging_str += ' *'
+                logging_str += " " + model.log_per_epoch()
                 logging.info(logging_str)
 
                 if self.early_stop > 0 and self.eval_termination(main_metric_results):
