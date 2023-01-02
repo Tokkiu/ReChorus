@@ -112,11 +112,6 @@ class EvoMoE(SequentialModel):
         self._define_params()
         self.apply(self.init_weights)
 
-    def set_num_updates(self, num_updates):
-        self.curr_temp = max(
-            self.max_temp * self.temp_decay ** num_updates, self.min_temp
-        )
-        print("temp is set to", self.curr_temp)
     def _define_params(self):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
         self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
@@ -220,6 +215,7 @@ class EvoMoE(SequentialModel):
         self.curr_temp = max(
             self.max_temp * self.temp_decay ** num_updates, self.min_temp
         )
+        print("temp is set to", self.curr_temp)
 
     def _gates_to_load(self, gates):
         """Compute the true load per expert, given the gates.
