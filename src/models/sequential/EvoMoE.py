@@ -90,6 +90,7 @@ class EvoMoE(SequentialModel):
         self.change_temp_epoch = args.change_temp
         self.temp_moe = self.gumbel_temperature > 0
         self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.999995)
+        self.anneal_moe = self.max_temp > 0
         self.curr_temp = self.max_temp
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
