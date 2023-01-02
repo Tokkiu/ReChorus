@@ -10,6 +10,7 @@ CMD example:
     python main.py --model_name ComiRec --emb_size 64 --lr 1e-3 --l2 1e-6 --attn_size 8 --K 4 --add_pos 1 \
     --history_max 20 --dataset 'Grocery_and_Gourmet_Food'
 """
+import torch.nn.functional as F
 
 import torch
 import torch.nn as nn
@@ -88,6 +89,8 @@ class EvoMoE(SequentialModel):
         self.gumbel_temperature_arg = args.temp
         self.change_temp_epoch = args.change_temp
         self.temp_moe = self.gumbel_temperature > 0
+        self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.999995)
+        self.curr_temp = self.max_temp
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
@@ -108,6 +111,11 @@ class EvoMoE(SequentialModel):
         self._define_params()
         self.apply(self.init_weights)
 
+    def set_num_updates(self, num_updates):
+        self.curr_temp = max(
+            self.max_temp * self.temp_decay ** num_updates, self.min_temp
+        )
+        print("temp is set to", self.curr_temp)
     def _define_params(self):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
         self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
@@ -207,6 +215,11 @@ class EvoMoE(SequentialModel):
             return torch.tensor([0], device=x.device, dtype=x.dtype)
         return x.float().var() / (x.float().mean()**2 + eps)
 
+    def update_per_epoch(self, num_updates):
+        self.curr_temp = max(
+            self.max_temp * self.temp_decay ** num_updates, self.min_temp
+        )
+
     def _gates_to_load(self, gates):
         """Compute the true load per expert, given the gates.
         The load is the number of examples for which the corresponding gate is >0.
@@ -282,9 +295,13 @@ class EvoMoE(SequentialModel):
         if self.pre_softmax:
             top_k_gates = top_k_logits
         else:
-            if self.temp_moe:
+            if self.anneal_moe:
+                top_k_gates = F.gumbel_softmax(top_k_logits.float(), tau=self.curr_temp, hard=True).type_as(top_k_logits)
+            elif self.temp_moe:
                 top_k_logits /= self.gumbel_temperature
-            top_k_gates = self.softmax(top_k_logits)
+                top_k_gates = self.softmax(top_k_logits)
+            else:
+                top_k_gates = self.softmax(top_k_logits)
 
         zeros = torch.zeros_like(logits, requires_grad=True)
         gates = zeros.scatter(1, top_k_indices, top_k_gates)

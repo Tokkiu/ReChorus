@@ -173,6 +173,9 @@ class GeneralModel(BaseModel):
         self.dropout = args.dropout
         self.test_all = args.test_all
 
+    def update_per_epoch(self):
+        pass
+
     def loss(self, out_dict: dict) -> torch.Tensor:
         """
         BPR ranking loss with optimization on multiple negative samples (a little different now)
