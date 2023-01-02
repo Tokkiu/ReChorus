@@ -63,6 +63,8 @@ class EvoMoE(SequentialModel):
                             help='pre softmax.')
         parser.add_argument('--temp', type=float, default=-1.0,
                             help='gumbel_temperature.')
+        parser.add_argument('--temp_decay', type=float, default=0.999995,
+                            help='temp_decay.')
         parser.add_argument('--change_temp', type=int, default=100000,
                             help='change_temp.')
         return SequentialModel.parse_model_args(parser)
@@ -90,6 +92,7 @@ class EvoMoE(SequentialModel):
         self.change_temp_epoch = args.change_temp
         self.temp_moe = self.gumbel_temperature > 0
         self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.999995)
+        self.temp_decay = args.temp_decay
         self.anneal_moe = self.max_temp > 0
         self.curr_temp = self.max_temp
         self.num_updates = 0
