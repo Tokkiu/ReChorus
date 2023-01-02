@@ -298,7 +298,7 @@ class EvoMoE(SequentialModel):
             top_k_gates = top_k_logits
         else:
             if self.anneal_moe:
-                top_k_gates = F.gumbel_softmax(top_k_logits.float(), tau=self.curr_temp, hard=True).type_as(top_k_logits)
+                top_k_gates = F.gumbel_softmax(top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
             elif self.temp_moe:
                 top_k_logits /= self.gumbel_temperature
                 top_k_gates = self.softmax(top_k_logits)
