@@ -193,8 +193,9 @@ class EvoMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
-        self.update_per_epoch(self.num_updates)
-        self.num_updates += 1
+        if self.training:
+            self.update_per_epoch(self.num_updates)
+            self.num_updates += 1
 
         return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
 
