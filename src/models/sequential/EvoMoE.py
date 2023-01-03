@@ -449,6 +449,7 @@ class ComiExpert(SequentialModel):
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self._define_params()
         self.use_evo = use_evo
+        self.apply(self.init_weights)
         if self.use_evo:
             self.relation_num = corpus.n_relations
             # self.relation_num = 1
@@ -460,13 +461,12 @@ class ComiExpert(SequentialModel):
             freq = np.linspace(0, 1, self.freq_dim) / 2.
             self.freqs = torch.from_numpy(np.concatenate((freq, -freq))).to(self.device).float()
             self.relation_range = torch.from_numpy(np.arange(self.relation_num)).to(self.device)
-
+            self.apply(self.init_weights)
             dft_freq_real = torch.tensor(np.real(self.freq_x))  # R * n_freq
             dft_freq_imag = torch.tensor(np.imag(self.freq_x))
             self.freq_real.weight.data.copy_(dft_freq_real)
             self.freq_imag.weight.data.copy_(dft_freq_imag)
 
-        self.apply(self.init_weights)
 
     def _define_params(self):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
