@@ -365,24 +365,24 @@ class EvoMoE(SequentialModel):
             #     feed_dict['value_id'] = self.kg_data['value'][index]
             return feed_dict
 
-        # def generate_kg_data(self) -> pd.DataFrame:
-        #     rec_data_size = len(self)
-        #     replace = (rec_data_size > len(self.corpus.relation_df))
-        #     kg_data = self.corpus.relation_df.sample(n=rec_data_size, replace=replace).reset_index(drop=True)
-        #     kg_data['value'] = np.zeros(len(kg_data), dtype=int)  # default for None
-        #     tail_select = kg_data['tail'].apply(lambda x: x < self.corpus.n_items)
-        #     item_item_df = kg_data[tail_select]
-        #     item_attr_df = kg_data.drop(item_item_df.index)
-        #     item_attr_df['value'] = item_attr_df['tail'].values
-        #
-        #     sample_tails = list()  # sample items sharing the same attribute
-        #     for head, val in zip(item_attr_df['head'].values, item_attr_df['tail'].values):
-        #         share_attr_items = self.corpus.share_attr_dict[val]
-        #         tail_idx = np.random.randint(len(share_attr_items))
-        #         sample_tails.append(share_attr_items[tail_idx])
-        #     item_attr_df['tail'] = sample_tails
-        #     kg_data = pd.concat([item_item_df, item_attr_df], ignore_index=True)
-        #     return kg_data
+        def generate_kg_data(self) -> pd.DataFrame:
+            rec_data_size = len(self)
+            replace = (rec_data_size > len(self.corpus.relation_df))
+            kg_data = self.corpus.relation_df.sample(n=rec_data_size, replace=replace).reset_index(drop=True)
+            kg_data['value'] = np.zeros(len(kg_data), dtype=int)  # default for None
+            tail_select = kg_data['tail'].apply(lambda x: x < self.corpus.n_items)
+            item_item_df = kg_data[tail_select]
+            item_attr_df = kg_data.drop(item_item_df.index)
+            item_attr_df['value'] = item_attr_df['tail'].values
+
+            sample_tails = list()  # sample items sharing the same attribute
+            for head, val in zip(item_attr_df['head'].values, item_attr_df['tail'].values):
+                share_attr_items = self.corpus.share_attr_dict[val]
+                tail_idx = np.random.randint(len(share_attr_items))
+                sample_tails.append(share_attr_items[tail_idx])
+            item_attr_df['tail'] = sample_tails
+            kg_data = pd.concat([item_item_df, item_attr_df], ignore_index=True)
+            return kg_data
 
         def actions_before_epoch(self):
             super().actions_before_epoch()
