@@ -335,6 +335,78 @@ class EvoMoE(SequentialModel):
         return gates, load
 
 
+    class Dataset(SequentialModel.Dataset):
+        def __init__(self, model, corpus, phase):
+            super().__init__(model, corpus, phase)
+            # if self.phase == 'train':
+            #     self.kg_data, self.neg_heads, self.neg_tails = None, None, None
+            #
+            # # Prepare item-to-value dict
+            # item_val = self.corpus.item_meta_df.copy()
+            # item_val[self.corpus.item_relations] = 0  # set the value of natural item relations to None
+            # for idx, r in enumerate(self.corpus.attr_relations):
+            #     base = self.corpus.n_items + np.sum(self.corpus.attr_max[:idx])
+            #     item_val[r] = item_val[r].apply(lambda x: x + base).astype(int)
+            # item_vals = item_val[self.corpus.relations].values  # this ensures the order is consistent to relations
+            # self.item_val_dict = dict()
+            # for item, vals in zip(item_val['item_id'].values, item_vals.tolist()):
+            #     self.item_val_dict[item] = [0] + vals  # the first dimension None for the virtual relation
+
+        def _get_feed_dict(self, index):
+            feed_dict = super()._get_feed_dict(index)
+            # feed_dict['item_val'] = [self.item_val_dict[item] for item in feed_dict['item_id']]
+            delta_t = self.data['time'][index] - feed_dict['history_times']
+            feed_dict['history_delta_t'] = KDAReader.norm_time(delta_t, self.corpus.t_scalar)
+            # if self.phase == 'train':
+            #     feed_dict['head_id'] = np.concatenate([[self.kg_data['head'][index]], self.neg_heads[index]])
+            #     feed_dict['tail_id'] = np.concatenate([[self.kg_data['tail'][index]], self.neg_tails[index]])
+            #     feed_dict['relation_id'] = self.kg_data['relation'][index]
+            #     feed_dict['value_id'] = self.kg_data['value'][index]
+            return feed_dict
+
+        # def generate_kg_data(self) -> pd.DataFrame:
+        #     rec_data_size = len(self)
+        #     replace = (rec_data_size > len(self.corpus.relation_df))
+        #     kg_data = self.corpus.relation_df.sample(n=rec_data_size, replace=replace).reset_index(drop=True)
+        #     kg_data['value'] = np.zeros(len(kg_data), dtype=int)  # default for None
+        #     tail_select = kg_data['tail'].apply(lambda x: x < self.corpus.n_items)
+        #     item_item_df = kg_data[tail_select]
+        #     item_attr_df = kg_data.drop(item_item_df.index)
+        #     item_attr_df['value'] = item_attr_df['tail'].values
+        #
+        #     sample_tails = list()  # sample items sharing the same attribute
+        #     for head, val in zip(item_attr_df['head'].values, item_attr_df['tail'].values):
+        #         share_attr_items = self.corpus.share_attr_dict[val]
+        #         tail_idx = np.random.randint(len(share_attr_items))
+        #         sample_tails.append(share_attr_items[tail_idx])
+        #     item_attr_df['tail'] = sample_tails
+        #     kg_data = pd.concat([item_item_df, item_attr_df], ignore_index=True)
+        #     return kg_data
+
+        def actions_before_epoch(self):
+            super().actions_before_epoch()
+            self.kg_data = self.generate_kg_data()
+            heads, tails = self.kg_data['head'].values, self.kg_data['tail'].values
+            relations, vals = self.kg_data['relation'].values, self.kg_data['value'].values
+            self.neg_heads = np.random.randint(1, self.corpus.n_items, size=(len(self.kg_data), self.model.num_neg))
+            self.neg_tails = np.random.randint(1, self.corpus.n_items, size=(len(self.kg_data), self.model.num_neg))
+            for i in range(len(self.kg_data)):
+                item_item_relation = (tails[i] <= self.corpus.n_items)
+                for j in range(self.model.num_neg):
+                    if np.random.rand() < self.model.neg_head_p:  # sample negative head
+                        tail = tails[i] if item_item_relation else vals[i]
+                        while (self.neg_heads[i][j], relations[i], tail) in self.corpus.triplet_set:
+                            self.neg_heads[i][j] = np.random.randint(1, self.corpus.n_items)
+                        self.neg_tails[i][j] = tails[i]
+                    else:  # sample negative tail
+                        head = heads[i] if item_item_relation else self.neg_tails[i][j]
+                        tail = self.neg_tails[i][j] if item_item_relation else vals[i]
+                        while (head, relations[i], tail) in self.corpus.triplet_set:
+                            self.neg_tails[i][j] = np.random.randint(1, self.corpus.n_items)
+                            head = heads[i] if item_item_relation else self.neg_tails[i][j]
+                            tail = self.neg_tails[i][j] if item_item_relation else vals[i]
+                        self.neg_heads[i][j] = heads[i]
+
 
 class ComiExpert(SequentialModel):
     reader = 'SeqReader'
