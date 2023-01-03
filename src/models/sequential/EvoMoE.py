@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from helpers.KDAReader import KDAReader
+import pandas as pd
 
 from models.BaseModel import SequentialModel
 from utils import layers
