@@ -29,7 +29,8 @@ torch.set_printoptions(
     sci_mode=False  # 用科学技术法显示数据，默认True
 )
 class EvoMoE(SequentialModel):
-    reader = 'SeqReader'
+    # reader = 'SeqReader'
+    reader = 'KDAReader'
     runner = 'BaseRunner'
     extra_log_args = ['emb_size', 'attn_size', 'K']
 
