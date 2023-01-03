@@ -176,6 +176,9 @@ class GeneralModel(BaseModel):
     def log_per_epoch(self):
         return ""
 
+    def update_per_epoch(self, n):
+        return n
+
     def loss(self, out_dict: dict) -> torch.Tensor:
         """
         BPR ranking loss with optimization on multiple negative samples (a little different now)

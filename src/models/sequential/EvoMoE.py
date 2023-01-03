@@ -61,10 +61,19 @@ class EvoMoE(SequentialModel):
                             help='pre softmax.')
         parser.add_argument('--fusion', type=str, default='top',
                             help='pre softmax.')
+
+        # Fixed temp
         parser.add_argument('--temp', type=float, default=-1.0,
                             help='gumbel_temperature.')
-        parser.add_argument('--temp_decay', type=float, default=0.999995,
+
+        # Annealing temp
+        parser.add_argument('--temp_decay', type=float, default=0.99999,
                             help='temp_decay.')
+        parser.add_argument('--max_temp', type=float, default=2.0,
+                            help='temp_decay.')
+        parser.add_argument('--min_temp', type=float, default=0.5,
+                            help='temp_decay.')
+
         parser.add_argument('--change_temp', type=int, default=100000,
                             help='change_temp.')
         return SequentialModel.parse_model_args(parser)
@@ -91,7 +100,9 @@ class EvoMoE(SequentialModel):
         self.gumbel_temperature_arg = args.temp
         self.change_temp_epoch = args.change_temp
         self.temp_moe = self.gumbel_temperature > 0
-        self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.999995)
+        self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.99999)
+        self.max_temp = args.max_temp
+        self.min_temp = args.min_temp
         self.temp_decay = args.temp_decay
         self.anneal_moe = self.max_temp > 0
         self.curr_temp = self.max_temp
@@ -196,9 +207,9 @@ class EvoMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
-        if self.training:
-            self.update_per_epoch(self.num_updates)
-            self.num_updates += 1
+        # if self.training:
+        #     self.update_per_epoch(self.num_updates)
+        #     self.num_updates += 1
 
         return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
 

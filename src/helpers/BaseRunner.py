@@ -139,6 +139,7 @@ class BaseRunner(object):
                     logging_str += ' *'
                 logging_str += " " + model.log_per_epoch()
                 logging.info(logging_str)
+                model.update_per_epoch(epoch)
 
                 if self.early_stop > 0 and self.eval_termination(main_metric_results):
                     logging.info("Early stop at %d based on dev result." % (epoch + 1))
