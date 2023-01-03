@@ -350,30 +350,30 @@ class EvoMoE(SequentialModel):
     class Dataset(SequentialModel.Dataset):
         def __init__(self, model, corpus, phase):
             super().__init__(model, corpus, phase)
-            # if self.phase == 'train':
-            #     self.kg_data, self.neg_heads, self.neg_tails = None, None, None
-            #
-            # # Prepare item-to-value dict
-            # item_val = self.corpus.item_meta_df.copy()
-            # item_val[self.corpus.item_relations] = 0  # set the value of natural item relations to None
-            # for idx, r in enumerate(self.corpus.attr_relations):
-            #     base = self.corpus.n_items + np.sum(self.corpus.attr_max[:idx])
-            #     item_val[r] = item_val[r].apply(lambda x: x + base).astype(int)
-            # item_vals = item_val[self.corpus.relations].values  # this ensures the order is consistent to relations
-            # self.item_val_dict = dict()
-            # for item, vals in zip(item_val['item_id'].values, item_vals.tolist()):
-            #     self.item_val_dict[item] = [0] + vals  # the first dimension None for the virtual relation
+            if self.phase == 'train':
+                self.kg_data, self.neg_heads, self.neg_tails = None, None, None
+
+            # Prepare item-to-value dict
+            item_val = self.corpus.item_meta_df.copy()
+            item_val[self.corpus.item_relations] = 0  # set the value of natural item relations to None
+            for idx, r in enumerate(self.corpus.attr_relations):
+                base = self.corpus.n_items + np.sum(self.corpus.attr_max[:idx])
+                item_val[r] = item_val[r].apply(lambda x: x + base).astype(int)
+            item_vals = item_val[self.corpus.relations].values  # this ensures the order is consistent to relations
+            self.item_val_dict = dict()
+            for item, vals in zip(item_val['item_id'].values, item_vals.tolist()):
+                self.item_val_dict[item] = [0] + vals  # the first dimension None for the virtual relation
 
         def _get_feed_dict(self, index):
             feed_dict = super()._get_feed_dict(index)
-            # feed_dict['item_val'] = [self.item_val_dict[item] for item in feed_dict['item_id']]
+            feed_dict['item_val'] = [self.item_val_dict[item] for item in feed_dict['item_id']]
             delta_t = self.data['time'][index] - feed_dict['history_times']
             feed_dict['history_delta_t'] = KDAReader.norm_time(delta_t, self.corpus.t_scalar)
-            # if self.phase == 'train':
-            #     feed_dict['head_id'] = np.concatenate([[self.kg_data['head'][index]], self.neg_heads[index]])
-            #     feed_dict['tail_id'] = np.concatenate([[self.kg_data['tail'][index]], self.neg_tails[index]])
-            #     feed_dict['relation_id'] = self.kg_data['relation'][index]
-            #     feed_dict['value_id'] = self.kg_data['value'][index]
+            if self.phase == 'train':
+                feed_dict['head_id'] = np.concatenate([[self.kg_data['head'][index]], self.neg_heads[index]])
+                feed_dict['tail_id'] = np.concatenate([[self.kg_data['tail'][index]], self.neg_tails[index]])
+                feed_dict['relation_id'] = self.kg_data['relation'][index]
+                feed_dict['value_id'] = self.kg_data['value'][index]
             return feed_dict
 
         def generate_kg_data(self) -> pd.DataFrame:
@@ -498,9 +498,8 @@ class ComiExpert(SequentialModel):
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             batch_size, seq_len = history.shape
             valid_mask = (history > 0).view(batch_size, 1, seq_len, 1)
-            import pdb; pdb.set_trace()
-            decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0,
-                                                                                    0.)  # B * 1 * H * R
+            # import pdb; pdb.set_trace()
+            decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
             attn_score = attention * decay
 
 
