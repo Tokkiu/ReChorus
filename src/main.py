@@ -22,6 +22,8 @@ def parse_global_args(parser):
                         help='Logging Level, 0, 10, ..., 50')
     parser.add_argument('--log_file', type=str, default='',
                         help='Logging file path')
+    parser.add_argument('--exp', type=str, default='',
+                        help='exp')
     parser.add_argument('--random_seed', type=int, default=0,
                         help='Random seed of numpy and pytorch')
     parser.add_argument('--load', type=int, default=0,
@@ -124,6 +126,10 @@ if __name__ == '__main__':
         args.log_file = '../log/{}/{}.txt'.format(init_args.model_name, log_file_name)
     if args.model_path == '':
         args.model_path = '../model/{}/{}.pt'.format(init_args.model_name, log_file_name)
+
+    if args.exp != '':
+        args.log_file = 'log/{}.log'.format(init_args.model_name, args.exp)
+        args.model_path = 'model/{}.pt'.format(init_args.model_name, args.exp)
 
     utils.check_dir(args.log_file)
     logging.basicConfig(filename=args.log_file, level=args.verbose)
