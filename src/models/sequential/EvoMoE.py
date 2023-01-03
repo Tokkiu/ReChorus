@@ -451,7 +451,7 @@ class ComiExpert(SequentialModel):
         self.use_evo = use_evo
         if self.use_evo:
             self.relation_num = corpus.n_relations
-            self.relation_num = 1
+            # self.relation_num = 1
             self.freq_x = corpus.freq_x
             self.freq_dim = args.n_dft // 2 + 1
             self.freq_rand = args.freq_rand
@@ -505,8 +505,8 @@ class ComiExpert(SequentialModel):
             # temporal evolution
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
-            import pdb; pdb.set_trace()
-            attn_score = attention * decay
+            # import pdb; pdb.set_trace()
+            attn_score = attention * decay[:, :, :, 0]
 
 
         interest_vectors = (his_vectors[:, None, :, :] * attn_score[:, :, :, None]).sum(-2)  # bsz, K, emb
