@@ -451,6 +451,7 @@ class ComiExpert(SequentialModel):
         self.use_evo = use_evo
         if self.use_evo:
             self.relation_num = corpus.n_relations
+            self.relation_num = 1
             self.freq_x = corpus.freq_x
             self.freq_dim = args.n_dft // 2 + 1
             self.freq_rand = args.freq_rand
