@@ -505,6 +505,7 @@ class ComiExpert(SequentialModel):
             # temporal evolution
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
+            import pdb; pdb.set_trace()
             attn_score = attention * decay[:, :, :, :1].squeeze(-1)
 
 
