@@ -128,8 +128,8 @@ if __name__ == '__main__':
         args.model_path = '../model/{}/{}.pt'.format(init_args.model_name, log_file_name)
 
     if args.exp != '':
-        args.log_file = 'log/{}.log'.format(init_args.model_name, args.exp)
-        args.model_path = 'model/{}.pt'.format(init_args.model_name, args.exp)
+        args.log_file = 'log/{}_{}.log'.format(init_args.model_name, args.exp)
+        args.model_path = 'model/{}_{}.pt'.format(init_args.model_name, args.exp)
 
     utils.check_dir(args.log_file)
     logging.basicConfig(filename=args.log_file, level=args.verbose)
