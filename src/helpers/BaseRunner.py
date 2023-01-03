@@ -105,6 +105,7 @@ class BaseRunner(object):
         model = data_dict['train'].model
         main_metric_results, dev_results = list(), list()
         self._check_time(start=True)
+        best_epoch = 0
         try:
             for epoch in range(self.epoch):
                 # Fit
@@ -137,6 +138,7 @@ class BaseRunner(object):
                         (hasattr(model, 'stage') and model.stage == 1):
                     model.save_model()
                     logging_str += ' *'
+                    best_epoch = epoch
                 logging_str += " " + model.log_per_epoch()
                 logging.info(logging_str)
                 model.update_per_epoch(epoch)
@@ -156,6 +158,7 @@ class BaseRunner(object):
         logging.info(os.linesep + "Best Iter(dev)={:>5}\t dev=({}) [{:<.1f} s] ".format(
             best_epoch + 1, utils.format_metric(dev_results[best_epoch]), self.time[1] - self.time[0]))
         model.load_model()
+        model.update_per_epoch(best_epoch)
 
     def fit(self, dataset: BaseModel.Dataset, epoch=-1) -> float:
         model = dataset.model
