@@ -82,6 +82,11 @@ class EvoMoE(SequentialModel):
 
         parser.add_argument('--use_evo', type=int, default=1,
                             help='change_temp.')
+
+        parser.add_argument('--neg_head_p', type=float, default=0.5,
+                            help='The probability of sampling negative head entity.')
+
+
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
