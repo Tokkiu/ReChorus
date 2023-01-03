@@ -159,6 +159,7 @@ class BaseRunner(object):
             best_epoch + 1, utils.format_metric(dev_results[best_epoch]), self.time[1] - self.time[0]))
         model.load_model()
         model.update_per_epoch(best_epoch)
+        logging.info("Load best epoch", best_epoch)
 
     def fit(self, dataset: BaseModel.Dataset, epoch=-1) -> float:
         model = dataset.model
