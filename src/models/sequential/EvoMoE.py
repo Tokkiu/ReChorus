@@ -127,12 +127,7 @@ class EvoMoE(SequentialModel):
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
-        self.experts = nn.ModuleList([
-            ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
-            for _ in range(self.num_experts)
-        ])
 
-        self.primary = ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
         self.noisy_gating = True
         self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
@@ -144,12 +139,18 @@ class EvoMoE(SequentialModel):
         self._define_params()
         self.apply(self.init_weights)
 
+        self.experts = nn.ModuleList([
+            ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
+            for _ in range(self.num_experts)
+        ])
+        for expert in self.experts:
+            expert.i_embeddings = self.i_embeddings
+        self.primary = ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
+        self.primary.i_embeddings = self.i_embeddings
+
     def _define_params(self):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
         self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
-        for expert in self.experts:
-            expert.i_embeddings = self.i_embeddings
-        self.primary.i_embeddings = self.i_embeddings
         self.transformer_block = nn.ModuleList([
             layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
@@ -505,7 +506,7 @@ class ComiExpert(SequentialModel):
             # temporal evolution
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             attn_score = (attention * decay[:, :, :, :1]).squeeze(-1)
 
 
