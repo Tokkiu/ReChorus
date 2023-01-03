@@ -64,13 +64,16 @@ class KDA(SequentialModel):
         if self.gamma < 0:
             self.gamma = len(corpus.relation_df) / len(corpus.all_df)
         self._define_params()
+        print(self.relational_dynamic_aggregation.freq_real.weight)
         self.apply(self.init_weights)
+        print(self.relational_dynamic_aggregation.freq_real.weight)
 
         if not self.freq_rand:
             dft_freq_real = torch.tensor(np.real(self.freq_x))  # R * n_freq
             dft_freq_imag = torch.tensor(np.imag(self.freq_x))
             self.relational_dynamic_aggregation.freq_real.weight.data.copy_(dft_freq_real)
             self.relational_dynamic_aggregation.freq_imag.weight.data.copy_(dft_freq_imag)
+        print(self.relational_dynamic_aggregation.freq_real.weight)
 
     def _define_params(self):
         self.user_embeddings = nn.Embedding(self.user_num, self.emb_size)
