@@ -76,6 +76,9 @@ class EvoMoE(SequentialModel):
 
         parser.add_argument('--change_temp', type=int, default=100000,
                             help='change_temp.')
+
+        parser.add_argument('--use_evo', type=int, default=1,
+                            help='change_temp.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -107,15 +110,16 @@ class EvoMoE(SequentialModel):
         self.anneal_moe = self.max_temp > 0
         self.curr_temp = self.max_temp
         self.num_updates = 0
+        self.use_evo = args.use_evo > 0
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
         self.experts = nn.ModuleList([
-            ComiExpert(args, corpus, k=1)
+            ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
             for _ in range(self.num_experts)
         ])
 
-        self.primary = ComiExpert(args, corpus, k=1)
+        self.primary = ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
         self.noisy_gating = True
         self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
@@ -166,10 +170,10 @@ class EvoMoE(SequentialModel):
         his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
 
-        his_vectors = [expert(history, lengths, his_sas_vectors)[0] for expert in self.experts]
+        his_vectors = [expert(history, lengths, his_sas_vectors, feed_dict)[0] for expert in self.experts]
         his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
 
-        vu, atten = self.primary(history, lengths, his_sas_vectors)
+        vu, atten = self.primary(history, lengths, his_sas_vectors, feed_dict)
         vu = vu.squeeze(1)
         print_gates = False
         if not self.training:
@@ -348,7 +352,7 @@ class ComiExpert(SequentialModel):
                             help='Whether add position embedding.')
         return SequentialModel.parse_model_args(parser)
 
-    def __init__(self, args, corpus, k=0):
+    def __init__(self, args, corpus, k=0, use_evo = False):
         super().__init__(args, corpus)
         self.emb_size = args.emb_size
         self.attn_size = args.attn_size
@@ -359,6 +363,18 @@ class ComiExpert(SequentialModel):
         self.max_his = args.history_max
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self._define_params()
+        self.use_evo = use_evo
+        if self.use_evo:
+            self.relation_num = corpus.n_relations
+            self.freq_x = corpus.freq_x
+            self.freq_dim = args.n_dft // 2 + 1
+            self.freq_rand = args.freq_rand
+            self.freq_real = nn.Embedding(self.relation_num, self.freq_dim)
+            self.freq_imag = nn.Embedding(self.relation_num, self.freq_dim)
+            freq = np.linspace(0, 1, self.freq_dim) / 2.
+            self.freqs = torch.from_numpy(np.concatenate((freq, -freq))).to(self.device).float()
+            self.relation_range = torch.from_numpy(np.arange(self.relation_num)).to(self.device)
+
         self.apply(self.init_weights)
 
     def _define_params(self):
@@ -368,7 +384,7 @@ class ComiExpert(SequentialModel):
         self.W1 = nn.Linear(self.emb_size, self.attn_size)
         self.W2 = nn.Linear(self.attn_size, self.K)
 
-    def forward(self, history, lengths, his_vectors):
+    def forward(self, history, lengths, his_vectors, feed_dict):
         self.check_list = []
         batch_size, seq_len = history.shape
 
@@ -387,6 +403,29 @@ class ComiExpert(SequentialModel):
         attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
         attn_score = (attn_score - attn_score.max()).softmax(dim=-1)
         attn_score = attn_score.masked_fill(torch.isnan(attn_score), 0)
+
+        if self.use_evo:
+            # shift masked softmax
+            attention = attn_score
+            attention = attention - attention.max()
+            attention = attention.masked_fill(valid_his == 0, -np.inf).softmax(dim=-2)
+            # temporal evolution
+            delta_t_n = feed_dict['history_delta_t'].float()  # B * H
+            decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_his == 0,
+                                                                                    0.)  # B * 1 * H * R
+            attn_score = attention * decay
+
+
         interest_vectors = (his_vectors[:, None, :, :] * attn_score[:, :, :, None]).sum(-2)  # bsz, K, emb
 
         return interest_vectors, attn_score
+    def idft_decay(self, delta_t):
+        real, imag = self.freq_real(self.relation_range), self.freq_imag(self.relation_range)
+        # create conjugate symmetric to ensure real number output
+        x_real = torch.cat([real, real], dim=-1)
+        x_imag = torch.cat([imag, -imag], dim=-1)
+        w = 2. * np.pi * self.freqs * delta_t.unsqueeze(-1)  # B * H * n_freq
+        real_part = w.cos()[:, :, None, :] * x_real[None, None, :, :]  # B * H * R * n_freq
+        imag_part = w.sin()[:, :, None, :] * x_imag[None, None, :, :]
+        decay = (real_part - imag_part).mean(dim=-1) / 2.  # B * H * R
+        return decay.float()
