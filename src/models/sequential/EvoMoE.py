@@ -461,6 +461,11 @@ class ComiExpert(SequentialModel):
             self.freqs = torch.from_numpy(np.concatenate((freq, -freq))).to(self.device).float()
             self.relation_range = torch.from_numpy(np.arange(self.relation_num)).to(self.device)
 
+            dft_freq_real = torch.tensor(np.real(self.freq_x))  # R * n_freq
+            dft_freq_imag = torch.tensor(np.imag(self.freq_x))
+            self.freq_real.weight.data.copy_(dft_freq_real)
+            self.freq_imag.weight.data.copy_(dft_freq_imag)
+
         self.apply(self.init_weights)
 
     def _define_params(self):
@@ -491,14 +496,14 @@ class ComiExpert(SequentialModel):
         attn_score = attn_score.masked_fill(torch.isnan(attn_score), 0)
 
         if self.use_evo:
-            # shift masked softmax
-            attention = attn_score
-            attention = attention - attention.max()
-            attention = attention.masked_fill(valid_his == 0, -np.inf).softmax(dim=-2)
-            # temporal evolution
-            delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             batch_size, seq_len = history.shape
             valid_mask = (history > 0).view(batch_size, 1, seq_len, 1)
+            # shift masked softmax
+            attention = attn_score.reshape(batch_size, 1, seq_len, 1)
+            attention = attention - attention.max()
+            attention = attention.masked_fill(valid_mask == 0, -np.inf).softmax(dim=-2)
+            # temporal evolution
+            delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
             import pdb; pdb.set_trace()
             attn_score = attention * decay
