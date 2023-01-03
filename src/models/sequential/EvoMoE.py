@@ -107,10 +107,12 @@ class EvoMoE(SequentialModel):
         self.fusion = args.fusion
         self.print_batch = args.print_batch
         self.print_seq = args.print_seq
+
         self.gumbel_temperature = 2
         self.gumbel_temperature_arg = args.temp
         self.change_temp_epoch = args.change_temp
         self.temp_moe = self.gumbel_temperature > 0
+
         self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.99999)
         self.max_temp = args.max_temp
         self.min_temp = args.min_temp
@@ -118,7 +120,10 @@ class EvoMoE(SequentialModel):
         self.anneal_moe = self.max_temp > 0
         self.curr_temp = self.max_temp
         self.num_updates = 0
+
         self.use_evo = args.use_evo > 0
+        self.neg_head_p = args.neg_head_p
+
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
