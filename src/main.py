@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
     if args.exp != '':
         now = datetime.now()
-        now_time = now.strftime("%Y_%m_%d_%H_%M")
+        now_time = now.strftime("%Y_%m_%d_%H_%M_%S")
         args.log_file = 'log/{}_{}_{}.log'.format(init_args.model_name, args.exp, now_time)
         args.model_path = 'model/{}_{}_{}.pt'.format(init_args.model_name, args.exp, now_time)
 
