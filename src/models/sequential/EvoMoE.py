@@ -85,7 +85,7 @@ class EvoMoE(SequentialModel):
         parser.add_argument('--change_temp', type=int, default=100000,
                             help='change_temp.')
 
-        parser.add_argument('--use_evo', type=int, default=1,
+        parser.add_argument('--use_evo', type=int, default=0,
                             help='change_temp.')
 
         parser.add_argument('--neg_head_p', type=float, default=0.5,
