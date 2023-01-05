@@ -14,6 +14,8 @@ from models.sequential import *
 from models.developing import *
 from utils import utils
 
+from datetime import datetime
+
 
 def parse_global_args(parser):
     parser.add_argument('--gpu', type=str, default='',
@@ -128,8 +130,10 @@ if __name__ == '__main__':
         args.model_path = '../model/{}/{}.pt'.format(init_args.model_name, log_file_name)
 
     if args.exp != '':
-        args.log_file = 'log/{}_{}.log'.format(init_args.model_name, args.exp)
-        args.model_path = 'model/{}_{}.pt'.format(init_args.model_name, args.exp)
+        now = datetime.now()
+        now_time = now.strftime("%Y_%m_%d_%H_%M")
+        args.log_file = 'log/{}_{}_{}.log'.format(init_args.model_name, args.exp, now_time)
+        args.model_path = 'model/{}_{}_{}.pt'.format(init_args.model_name, args.exp, now_time)
 
     utils.check_dir(args.log_file)
     logging.basicConfig(filename=args.log_file, level=args.verbose)
