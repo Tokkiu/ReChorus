@@ -139,7 +139,11 @@ class EvoMoE(SequentialModel):
         self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
 
-        self.reweight_layer = nn.Linear(self.max_his, 1)
+        self.reweight_layers = nn.ModuleList([
+            nn.Linear(self.max_his, 1)
+            for _ in range(self.num_experts)
+        ])
+
         self.reweight_act = torch.sigmoid
 
         self.softplus = nn.Softplus()
@@ -215,7 +219,7 @@ class EvoMoE(SequentialModel):
         loss *= self.loss_coef
 
         if self.re_atten:
-            reatten_vectors = [self.reweight_act(self.reweight_layer(rea.squeeze(1))) for rea in atten_vectors]
+            reatten_vectors = [self.reweight_act(self.reweight_layers[i](atten_vectors[i].squeeze(1))) for i in range(len(self.reweight_layers))]
             reatten_vectors = torch.cat(reatten_vectors, 1)
             gates = (reatten_vectors * gates).softmax(1)
 
