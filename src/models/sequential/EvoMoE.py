@@ -140,6 +140,7 @@ class EvoMoE(SequentialModel):
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
 
         self.reweight_layer = nn.Linear(self.max_his, 1)
+        self.reweight_act = torch.sigmoid
 
         self.softplus = nn.Softplus()
         self.softmax = nn.Softmax(1)
@@ -195,8 +196,8 @@ class EvoMoE(SequentialModel):
         expert_output = [expert(history, lengths, his_sas_vectors, feed_dict) for expert in self.experts]
 
         his_vectors = [out[0] for out in expert_output]
+        his_vectors = torch.cat(his_vectors, 1)
         atten_vectors = [out[1] for out in expert_output]
-        import pdb; pdb.set_trace()
 
         vu, atten, decay = self.primary(history, lengths, his_sas_vectors, feed_dict)
         vu = vu.squeeze(1)
@@ -212,6 +213,12 @@ class EvoMoE(SequentialModel):
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
         loss *= self.loss_coef
+
+        if self.re_atten:
+            reatten_vectors = [self.reweight_act(self.reweight_layer(rea.squeeze(1))) for rea in atten_vectors]
+            reatten_vectors = torch.cat(reatten_vectors, 1)
+            gates = (reatten_vectors * gates).softmax(1)
+
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
 
