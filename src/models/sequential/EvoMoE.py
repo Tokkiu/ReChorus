@@ -207,7 +207,7 @@ class EvoMoE(SequentialModel):
         if self.fusion == 'fusion':
             if print_gates and self.print_batch > 0:
                 print(gates[:self.print_batch])
-                if decay:
+                if decay is not None:
                     print(decay[:, :, :, :1].reshape(gates.shape(0), -1)[:self.print_batch])
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
         elif self.fusion == 'top':
