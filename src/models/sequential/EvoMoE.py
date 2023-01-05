@@ -69,6 +69,11 @@ class EvoMoE(SequentialModel):
         parser.add_argument('--temp', type=float, default=-1.0,
                             help='gumbel_temperature.')
 
+        # Reweight
+        parser.add_argument('--re_atten', type=int, default=0,
+                            help='gumbel_temperature.')
+
+
         # Annealing temp
         parser.add_argument('--temp_decay', type=float, default=0.99999,
                             help='temp_decay.')
@@ -124,6 +129,8 @@ class EvoMoE(SequentialModel):
         self.use_evo = args.use_evo > 0
         self.neg_head_p = args.neg_head_p
 
+        self.re_atten = args.re_atten > 0
+
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
@@ -131,6 +138,8 @@ class EvoMoE(SequentialModel):
         self.noisy_gating = True
         self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
+
+        self.reweight_layer = nn.Linear(self.max_his, 1)
 
         self.softplus = nn.Softplus()
         self.softmax = nn.Softmax(1)
@@ -183,9 +192,11 @@ class EvoMoE(SequentialModel):
             his_sas_vectors = block(his_sas_vectors, attn_mask)
         his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
+        expert_output = [expert(history, lengths, his_sas_vectors, feed_dict) for expert in self.experts]
 
-        his_vectors = [expert(history, lengths, his_sas_vectors, feed_dict)[0] for expert in self.experts]
-        his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
+        his_vectors = [out[0] for out in expert_output]
+        atten_vectors = [out[1] for out in expert_output]
+        import pdb; pdb.set_trace()
 
         vu, atten, decay = self.primary(history, lengths, his_sas_vectors, feed_dict)
         vu = vu.squeeze(1)
