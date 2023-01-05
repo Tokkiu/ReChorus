@@ -187,7 +187,7 @@ class EvoMoE(SequentialModel):
         his_vectors = [expert(history, lengths, his_sas_vectors, feed_dict)[0] for expert in self.experts]
         his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
 
-        vu, atten = self.primary(history, lengths, his_sas_vectors, feed_dict)
+        vu, atten, decay = self.primary(history, lengths, his_sas_vectors, feed_dict)
         vu = vu.squeeze(1)
         print_gates = False
         if not self.training:
@@ -207,6 +207,8 @@ class EvoMoE(SequentialModel):
         if self.fusion == 'fusion':
             if print_gates and self.print_batch > 0:
                 print(gates[:self.print_batch])
+                if decay:
+                    print(decay[:, :, :, :1].reshape(gates.shape(0), -1)[:self.print_batch])
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
         elif self.fusion == 'top':
             val, gtx = gates.topk(self.k)
@@ -496,6 +498,7 @@ class ComiExpert(SequentialModel):
         attn_score = (attn_score - attn_score.max()).softmax(dim=-1)
         attn_score = attn_score.masked_fill(torch.isnan(attn_score), 0)
 
+        decay = None
         if self.use_evo:
             batch_size, seq_len = history.shape
             valid_mask = (history > 0).view(batch_size, 1, seq_len, 1)
@@ -512,7 +515,7 @@ class ComiExpert(SequentialModel):
 
         interest_vectors = (his_vectors[:, None, :, :] * attn_score[:, :, :, None]).sum(-2)  # bsz, K, emb
 
-        return interest_vectors, attn_score
+        return interest_vectors, attn_score, decay
     def idft_decay(self, delta_t):
         real, imag = self.freq_real(self.relation_range), self.freq_imag(self.relation_range)
         # create conjugate symmetric to ensure real number output
