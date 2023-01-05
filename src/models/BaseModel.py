@@ -249,7 +249,6 @@ class SequentialModel(GeneralModel):
             user_seq = self.corpus.user_his[feed_dict['user_id']][:pos]
             if self.model.history_max > 0:
                 user_seq = user_seq[-self.model.history_max:]
-                import pdb; pdb.set_trace()
                 user_seq += [(0, 0)] * (self.model.history_max - len(user_seq))
             feed_dict['history_items'] = np.array([x[0] for x in user_seq])
             feed_dict['history_times'] = np.array([x[1] for x in user_seq])
