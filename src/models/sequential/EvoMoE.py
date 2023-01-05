@@ -221,9 +221,8 @@ class EvoMoE(SequentialModel):
         if self.re_atten:
             reatten_vectors = [self.reweight_act(self.reweight_layers[i](atten_vectors[i].squeeze(1))) for i in range(len(self.reweight_layers))]
             reatten_vectors = torch.cat(reatten_vectors, 1)
-            gates = (reatten_vectors * gates).softmax(1)
-            import pdb; pdb.set_trace()
-            gates /= gates.sum(1)
+            gates = (reatten_vectors * gates)
+            gates /= gates.sum(1).unsqueeze(1)
 
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
