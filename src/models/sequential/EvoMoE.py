@@ -546,7 +546,7 @@ class ComiExpert(SequentialModel):
             decay = decay.mean(-1).unsqueeze(-1)
             # import pdb; pdb.set_trace()
             # attn_score = (attention * decay).squeeze(-1)
-            attn_score = attention + decay * self.decay_factor
+            attn_score = attn_score + decay * self.decay_factor
 
         attn_score_out = attn_score.softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
 
