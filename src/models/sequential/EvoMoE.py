@@ -518,8 +518,8 @@ class ComiExpert(SequentialModel):
         attn_score = self.W2(self.W1(his_pos_vectors).tanh())  # bsz, his_max, K
         attn_score = attn_score.masked_fill(valid_his.unsqueeze(-1) == 0, -np.inf)
         attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
-        attn_score = (attn_score - attn_score.max()).softmax(dim=-1)
-        attn_score = attn_score.masked_fill(torch.isnan(attn_score), 0)
+        attn_score = (attn_score - attn_score.max())
+        # attn_score_out = attn_score.softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
 
         decay = None
         if self.use_evo:
@@ -533,13 +533,15 @@ class ComiExpert(SequentialModel):
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
             decay = decay.mean(-1).unsqueeze(-1)
-            # import pdb; pdb.set_trace()
-            attn_score = (attention * decay).squeeze(-1)
+            import pdb; pdb.set_trace()
+            # attn_score = (attention * decay).squeeze(-1)
+            attn_score = attention + decay
 
+        attn_score_out = attn_score.softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
 
-        interest_vectors = (his_vectors[:, None, :, :] * attn_score[:, :, :, None]).sum(-2)  # bsz, K, emb
+        interest_vectors = (his_vectors[:, None, :, :] * attn_score_out[:, :, :, None]).sum(-2)  # bsz, K, emb
 
-        return interest_vectors, attn_score, decay
+        return interest_vectors, attn_score_out, decay
     def idft_decay(self, delta_t):
         real, imag = self.freq_real(self.relation_range), self.freq_imag(self.relation_range)
         # create conjugate symmetric to ensure real number output
