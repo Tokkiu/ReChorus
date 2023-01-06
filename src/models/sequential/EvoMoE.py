@@ -159,13 +159,13 @@ class EvoMoE(SequentialModel):
         self.register_buffer("std", torch.tensor([1.0]))
         self._define_params()
         self.apply(self.init_weights)
-        if self.xav_init:
-            self.apply(self.xavier_normal_initialization)
 
         self.experts = nn.ModuleList([
             ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
             for _ in range(self.num_experts)
         ])
+        if self.xav_init:
+            self.apply(self.xavier_normal_initialization)
         for expert in self.experts:
             expert.i_embeddings = self.i_embeddings
         self.primary = ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
