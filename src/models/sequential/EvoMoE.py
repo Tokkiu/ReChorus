@@ -233,6 +233,7 @@ class EvoMoE(SequentialModel):
             gates = (reatten_vectors * gates)
             gates /= gates.sum(1).unsqueeze(1)
 
+        import pdb; pdb.set_trace()
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
 
