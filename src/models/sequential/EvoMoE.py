@@ -93,6 +93,8 @@ class EvoMoE(SequentialModel):
         parser.add_argument('--decay_factor', type=float, default=1,
                             help='decay_factor')
 
+        parser.add_argument('--xav_init', type=int, default=0,
+                            help='xav_init.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -131,6 +133,9 @@ class EvoMoE(SequentialModel):
         self.decay_factor = args.decay_factor
         self.neg_head_p = args.neg_head_p
 
+
+        self.xav_init = args.xav_init > 0
+
         self.re_atten = args.re_atten > 0
 
         if self.fusion not in ['fusion','top']:
@@ -154,6 +159,8 @@ class EvoMoE(SequentialModel):
         self.register_buffer("std", torch.tensor([1.0]))
         self._define_params()
         self.apply(self.init_weights)
+        if self.xav_init:
+            self.apply(self.xavier_normal_initialization)
 
         self.experts = nn.ModuleList([
             ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
