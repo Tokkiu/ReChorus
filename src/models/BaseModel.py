@@ -38,7 +38,7 @@ class BaseModel(nn.Module):
             nn.init.normal_(m.weight, mean=0.0, std=0.01)
 
 
-    def xavier_normal_initialization(module):
+    def xavier_normal_initialization(self, module):
         r"""using `xavier_normal_`_ in PyTorch to initialize the parameters in
         nn.Embedding and nn.Linear layers. For bias in nn.Linear layers,
         using constant 0 to initialize.
