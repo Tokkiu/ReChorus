@@ -90,7 +90,8 @@ class EvoMoE(SequentialModel):
 
         parser.add_argument('--neg_head_p', type=float, default=0.5,
                             help='The probability of sampling negative head entity.')
-
+        parser.add_argument('--decay_factor', type=float, default=1,
+                            help='decay_factor')
 
         return SequentialModel.parse_model_args(parser)
 
@@ -127,6 +128,7 @@ class EvoMoE(SequentialModel):
         self.num_updates = 0
 
         self.use_evo = args.use_evo > 0
+        self.decay_factor = args.decay_factor
         self.neg_head_p = args.neg_head_p
 
         self.re_atten = args.re_atten > 0
@@ -533,9 +535,9 @@ class ComiExpert(SequentialModel):
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
             decay = decay.mean(-1).unsqueeze(-1)
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             # attn_score = (attention * decay).squeeze(-1)
-            attn_score = attention + decay
+            attn_score = attention + decay * self.decay_factor
 
         attn_score_out = attn_score.softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
 
