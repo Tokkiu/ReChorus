@@ -477,6 +477,7 @@ class ComiExpert(SequentialModel):
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self._define_params()
         self.use_evo = use_evo
+        self.decay_factor = args.decay_factor
         self.apply(self.init_weights)
         if self.use_evo:
             self.relation_num = corpus.n_relations
