@@ -229,12 +229,12 @@ class EvoMoE(SequentialModel):
             reatten_input = torch.cat(atten_vectors, 1)
             reatten_vectors = self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1)  # bsz, experts
             if not self.training:
-                print("reatten_input", reatten_input[self.print_batch])
-                print("reatten_vectors", reatten_vectors[self.print_batch])
+                print("reatten_input", reatten_input[:self.print_batch])
+                print("reatten_vectors", reatten_vectors[:self.print_batch])
 
         gates, load, gate_logits = self.noisy_top_k_gating(vu, self.training, bias=reatten_vectors)
         if not self.training:
-            print("gate_logits", gate_logits[self.print_batch])
+            print("gate_logits", gate_logits[:self.print_batch])
         # import pdb; pdb.set_trace()
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
