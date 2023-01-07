@@ -228,8 +228,12 @@ class EvoMoE(SequentialModel):
         loss *= self.loss_coef
 
         if self.re_atten:
-            reatten_vectors = [self.reweight_act(self.reweight_layers[i](atten_vectors[i].squeeze(1))) for i in range(len(self.reweight_layers))]
+            reatten_input = self.reweight_layers[i](atten_vectors[i].squeeze(1))
+            reatten_vectors = [self.reweight_act(reatten_input) for i in range(len(self.reweight_layers))]
             reatten_vectors = torch.cat(reatten_vectors, 1)
+            if not self.training:
+                print(reatten_input[self.print_batch])
+                print(reatten_vectors[self.print_batch])
             gates = (reatten_vectors * gates)
             gates /= gates.sum(1).unsqueeze(1)
 
