@@ -232,7 +232,7 @@ class EvoMoE(SequentialModel):
 
         if self.re_atten:
             reatten_input = torch.cat(atten_vectors, 1)
-            reatten_vectors = self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1)  # bsz, experts
+            reatten_vectors = self.reweight_act(self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1))  # bsz, experts
             if not self.training:
                 print(reatten_input[self.print_batch])
                 print(reatten_vectors[self.print_batch])
