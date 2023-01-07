@@ -380,14 +380,13 @@ class EvoMoE(SequentialModel):
                 n_top_k_logits = top_k_logits + bias
             else:
                 n_top_k_logits = top_k_logits
-            top_k_gates = self.softmax(n_top_k_logits)
-
-            # if self.anneal_moe:
-            #     top_k_gates = F.gumbel_softmax(n_top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
+            if self.anneal_moe:
+                top_k_gates = F.gumbel_softmax(n_top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
             # elif self.temp_moe:
             #     n_top_k_logits /= self.gumbel_temperature
             #     top_k_gates = self.softmax(n_top_k_logits)
-            # else:
+            else:
+                top_k_gates = self.softmax(n_top_k_logits)
 
         zeros = torch.zeros_like(logits, requires_grad=True)
         gates = zeros.scatter(1, top_k_indices, top_k_gates)
