@@ -376,6 +376,7 @@ class EvoMoE(SequentialModel):
         if self.pre_softmax:
             top_k_gates = top_k_logits
         else:
+            import pdb; pdb.set_trace()
             if bias is not None:
                 n_top_k_logits = top_k_logits + bias
             else:
