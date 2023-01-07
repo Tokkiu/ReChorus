@@ -233,6 +233,7 @@ class EvoMoE(SequentialModel):
                 print("reatten_vectors", reatten_vectors[:self.print_batch])
 
         gates, load, gate_logits = self.noisy_top_k_gating(vu, self.training, bias=reatten_vectors)
+        import pdb; pdb.set_trace()
         if not self.training:
             print("gate_logits", gate_logits[:self.print_batch])
         # import pdb; pdb.set_trace()
@@ -388,9 +389,11 @@ class EvoMoE(SequentialModel):
             #     top_k_gates = self.softmax(n_top_k_logits)
             else:
                 top_k_gates = self.softmax(n_top_k_logits)
+                import pdb; pdb.set_trace()
 
         zeros = torch.zeros_like(logits, requires_grad=True)
         gates = zeros.scatter(1, top_k_indices, top_k_gates)
+        import pdb; pdb.set_trace()
 
         if self.noisy_gating and self.k < self.num_experts and train:
             load = (self._prob_in_top_k(clean_logits, noisy_logits, noise_stddev, top_logits)).sum(0)
