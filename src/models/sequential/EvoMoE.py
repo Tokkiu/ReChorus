@@ -236,7 +236,7 @@ class EvoMoE(SequentialModel):
                 print(reatten_input[self.print_batch])
                 print(reatten_vectors[self.print_batch])
             gates = (reatten_vectors * gates)
-            gates /= gates.sum(1).unsqueeze(1)
+            # gates /= gates.sum(1).unsqueeze(1)
 
         # import pdb; pdb.set_trace()
         if self.use_scaler:
