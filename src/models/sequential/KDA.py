@@ -129,8 +129,9 @@ class KDA(SequentialModel):
         Relational Dynamic History Aggregation
         """
         valid_mask = (history > 0).view(batch_size, 1, seq_len, 1)
+        is_train = feed_dict['phase'] == 'train'
         context = self.relational_dynamic_aggregation(
-            his_vectors, delta_t_n, i_vectors, v_vectors, valid_mask, train=self.training)  # B * -1 * R * V
+            his_vectors, delta_t_n, i_vectors, v_vectors, valid_mask, train=is_train)  # B * -1 * R * V
 
         """
         Multi-layer Self-attention
