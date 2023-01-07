@@ -308,8 +308,7 @@ class RelationalDynamicAggregation(nn.Module):
         attention = attention.masked_fill(valid_mask == 0, -np.inf).softmax(dim=-2)
         # temporal evolution
         decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask==0, 0.)  # B * 1 * H * R
-        if not self.training:
-            print("train" if self.training else "test", decay[:10][:,:,0].squeeze(-1))
+        print("train" if self.training else "test", decay[:10][:,:,:,0].squeeze())
 
         attention = attention * decay
         # attentional aggregation of history items
