@@ -233,7 +233,6 @@ class EvoMoE(SequentialModel):
                 print("reatten_vectors", reatten_vectors[:self.print_batch])
 
         gates, load, gate_logits = self.noisy_top_k_gating(vu, self.training, bias=reatten_vectors)
-        import pdb; pdb.set_trace()
         if not self.training:
             print("gate_logits", gate_logits[:self.print_batch])
         # import pdb; pdb.set_trace()
@@ -251,7 +250,7 @@ class EvoMoE(SequentialModel):
 
         if self.fusion == 'fusion':
             if print_gates and self.print_batch > 0:
-                print(gates[:self.print_batch])
+                print("gates", gates[:self.print_batch])
                 if decay is not None:
                     print(decay.reshape(gates.size(0), -1)[:self.print_batch])
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
@@ -371,35 +370,32 @@ class EvoMoE(SequentialModel):
                 logits = self.softmax(logits/self.gumbel_temperature)
             else:
                 logits = self.softmax(logits)
-        top_logits, top_indices = logits.topk(min(self.k + 1, self.num_experts), dim=1)
+        if bias is not None:
+            n_logits = logits + bias
+        else:
+            n_logits = logits
+        top_logits, top_indices = n_logits.topk(min(self.k + 1, self.num_experts), dim=1)
         top_k_logits = top_logits[:, :self.k]
         top_k_indices = top_indices[:, :self.k]
         if self.pre_softmax:
             top_k_gates = top_k_logits
         else:
-            import pdb; pdb.set_trace()
-            if bias is not None:
-                n_top_k_logits = top_k_logits + bias
-            else:
-                n_top_k_logits = top_k_logits
             if self.anneal_moe:
-                top_k_gates = F.gumbel_softmax(n_top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
+                top_k_gates = F.gumbel_softmax(top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
             # elif self.temp_moe:
             #     n_top_k_logits /= self.gumbel_temperature
             #     top_k_gates = self.softmax(n_top_k_logits)
             else:
-                top_k_gates = self.softmax(n_top_k_logits)
-                import pdb; pdb.set_trace()
+                top_k_gates = self.softmax(top_k_logits)
 
         zeros = torch.zeros_like(logits, requires_grad=True)
         gates = zeros.scatter(1, top_k_indices, top_k_gates)
-        import pdb; pdb.set_trace()
 
         if self.noisy_gating and self.k < self.num_experts and train:
             load = (self._prob_in_top_k(clean_logits, noisy_logits, noise_stddev, top_logits)).sum(0)
         else:
             load = self._gates_to_load(gates)
-        return gates, load, top_k_logits
+        return gates, load, n_logits
 
 
     class Dataset(SequentialModel.Dataset):
