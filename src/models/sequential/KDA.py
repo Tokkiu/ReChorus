@@ -20,7 +20,14 @@ from utils import layers
 from models.BaseModel import SequentialModel
 from helpers.KDAReader import KDAReader
 
-
+torch.set_printoptions(
+    precision=2,    # 精度，保留小数点后几位，默认4
+    threshold=np.inf,
+    edgeitems=3,
+    linewidth=200,  # 每行最多显示的字符数，默认80，超过则换行显示
+    profile=None,
+    sci_mode=False  # 用科学技术法显示数据，默认True
+)
 class KDA(SequentialModel):
     reader = 'KDAReader'
     runner = 'BaseRunner'
@@ -299,8 +306,11 @@ class RelationalDynamicAggregation(nn.Module):
         attention = attention - attention.max()
         attention = attention.masked_fill(valid_mask == 0, -np.inf).softmax(dim=-2)
         # temporal evolution
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask==0, 0.)  # B * 1 * H * R
+        if self.training:
+            print(decay[:10])
+
         attention = attention * decay
         # attentional aggregation of history items
         context = (seq[:, None, :, None, :] * attention[:, :, :, :, None]).sum(-3)  # B * -1 * R * V
