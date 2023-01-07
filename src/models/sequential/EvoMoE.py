@@ -224,20 +224,22 @@ class EvoMoE(SequentialModel):
             # print((atten[:self.print_batch]*100).int())
             print_gates = True
 
-        gates, load = self.noisy_top_k_gating(vu, self.training)
+        reatten_vectors = None
+        if self.re_atten:
+            reatten_input = torch.cat(atten_vectors, 1)
+            reatten_vectors = self.reweight_act(self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1))  # bsz, experts
+            if not self.training:
+                print(reatten_input[self.print_batch])
+                print(reatten_vectors[self.print_batch])
+
+        gates, load = self.noisy_top_k_gating(vu, self.training, bias=reatten_vectors)
         # import pdb; pdb.set_trace()
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
         loss *= self.loss_coef
 
-        if self.re_atten:
-            reatten_input = torch.cat(atten_vectors, 1)
-            reatten_vectors = self.reweight_act(self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1))  # bsz, experts
-            import pdb; pdb.set_trace()
-            if not self.training:
-                print(reatten_input[self.print_batch])
-                print(reatten_vectors[self.print_batch])
-            gates = (reatten_vectors * gates)
+
+            # gates = (reatten_vectors * gates)
             # gates /= gates.sum(1).unsqueeze(1)
 
         # import pdb; pdb.set_trace()
@@ -340,7 +342,7 @@ class EvoMoE(SequentialModel):
         prob = torch.where(is_in, prob_if_in, prob_if_out)
         return prob
 
-    def noisy_top_k_gating(self, x, train, noise_epsilon=1e-2):
+    def noisy_top_k_gating(self, x, train, noise_epsilon=1e-2, bias=None):
         """Noisy top-k gating.
           See paper: https://arxiv.org/abs/1701.06538.
           Args:
@@ -372,6 +374,8 @@ class EvoMoE(SequentialModel):
         if self.pre_softmax:
             top_k_gates = top_k_logits
         else:
+            if bias:
+                top_k_logits += bias
             if self.anneal_moe:
                 top_k_gates = F.gumbel_softmax(top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
             elif self.temp_moe:
