@@ -380,7 +380,6 @@ class EvoMoE(SequentialModel):
                 n_top_k_logits = top_k_logits + bias
             else:
                 n_top_k_logits = top_k_logits
-            import pdb; pdb.set_trace()
             if self.anneal_moe:
                 top_k_gates = F.gumbel_softmax(n_top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
             elif self.temp_moe:
