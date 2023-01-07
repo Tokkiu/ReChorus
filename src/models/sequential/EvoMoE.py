@@ -151,6 +151,9 @@ class EvoMoE(SequentialModel):
             for _ in range(self.num_experts)
         ])
 
+        self.re_layer1 = nn.Linear(self.max_his, self.emb_size)
+        self.re_layer2 = nn.Linear(self.emb_size, 1)
+
         self.reweight_act = torch.sigmoid
 
         self.softplus = nn.Softplus()
@@ -229,9 +232,9 @@ class EvoMoE(SequentialModel):
 
         if self.re_atten:
             reatten_input = torch.cat(atten_vectors, 1)
-            reatten_vectors = [self.reweight_act(self.reweight_layers[i](atten_vectors[i].squeeze(1))) for i in
-                               range(len(self.reweight_layers))]
-            reatten_vectors = torch.cat(reatten_vectors, 1)
+            reatten_vectors = self.re_layer2(self.re_layer1(reatten_input).tanh())  # bsz, his_max, K
+            print(reatten_vectors.shape)
+            print(gates.shape)
             if not self.training:
                 print(reatten_input[self.print_batch])
                 print(reatten_vectors[self.print_batch])
