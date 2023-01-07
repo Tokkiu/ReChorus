@@ -130,7 +130,7 @@ class KDA(SequentialModel):
         """
         valid_mask = (history > 0).view(batch_size, 1, seq_len, 1)
         context = self.relational_dynamic_aggregation(
-            his_vectors, delta_t_n, i_vectors, v_vectors, valid_mask)  # B * -1 * R * V
+            his_vectors, delta_t_n, i_vectors, v_vectors, valid_mask, train=self.training)  # B * -1 * R * V
 
         """
         Multi-layer Self-attention
@@ -294,7 +294,7 @@ class RelationalDynamicAggregation(nn.Module):
         decay = (real_part - imag_part).mean(dim=-1) / 2.  # B * H * R
         return decay.float()
 
-    def forward(self, seq, delta_t_n, target, target_value, valid_mask):
+    def forward(self, seq, delta_t_n, target, target_value, valid_mask, train=True):
         r_vectors = self.relation_embeddings(self.relation_range)  # R * V
         if self.include_val:
             rv_vectors = r_vectors[None, None, :, :] + target_value
@@ -306,11 +306,11 @@ class RelationalDynamicAggregation(nn.Module):
         attention = attention - attention.max()
         attention = attention.masked_fill(valid_mask == 0, -np.inf).softmax(dim=-2)
         # temporal evolution
-        if not self.training:
+        if not train:
             import pdb; pdb.set_trace()
         decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask==0, 0.)  # B * 1 * H * R
-        if not self.training:
-            print(decay[:10])
+        # if not self.training:
+        #     print(decay[:10])
 
         attention = attention * decay
         # attentional aggregation of history items
