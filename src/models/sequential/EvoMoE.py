@@ -230,6 +230,7 @@ class EvoMoE(SequentialModel):
         if self.re_atten:
             reatten_input = torch.cat(atten_vectors, 1)
             reatten_vectors = self.reweight_act(reatten_input)
+            import pdb;pdb.set_trace()
             if not self.training:
                 print(reatten_input[self.print_batch])
                 print(reatten_vectors[self.print_batch])
