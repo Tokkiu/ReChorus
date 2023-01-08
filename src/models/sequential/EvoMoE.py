@@ -237,20 +237,20 @@ class EvoMoE(SequentialModel):
         if not self.training:
             if self.print_seq > 0:
                 print("seqs:")
-                print(history[:self.print_seq])
+                print(history[:self.print_seq].detach())
             if self.print_batch > 0 and self.re_atten:
                 print("reatten_inputs:")
-                print(reatten_input[:self.print_batch])
+                print(reatten_input[:self.print_batch].detach())
                 print("reatten_logits:")
-                print(reatten_vectors[:self.print_batch])
+                print(reatten_vectors[:self.print_batch].detach())
             if self.print_batch > 0:
                 print("gate_logits:")
                 print(gate_logits[:self.print_batch].detach())
                 print("gates:")
-                print(gates[:self.print_batch])
+                print(gates[:self.print_batch].detach())
             if self.print_batch > 0 and decay is not None:
                 print("decays:")
-                print(decay.reshape(gates.size(0), -1)[:self.print_batch])
+                print(decay.reshape(gates.size(0), -1)[:self.print_batch].detach())
 
         i_vectors = self.i_embeddings(i_ids)
         if feed_dict['phase'] == 'train':
