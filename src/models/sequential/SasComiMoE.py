@@ -65,7 +65,7 @@ class SasComiMoE(SequentialModel):
         self.max_his = args.history_max
         self.use_scaler = args.use_scaler == 1
         self.pre_softmax = args.pre_softmax == 1
-        self.fusion = args.fusion
+        self.fusion = args.fusion == 1
         self.print_seq = args.print_seq
         self.print_batch = args.print_batch
         self.loss_coef = args.moe_loss
@@ -140,7 +140,7 @@ class SasComiMoE(SequentialModel):
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
         val, gtx = gates.topk(self.k)
-        if self.fusion == 'fusion':
+        if self.fusion:
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
         else:
             interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
