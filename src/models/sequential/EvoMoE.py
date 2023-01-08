@@ -241,8 +241,10 @@ class EvoMoE(SequentialModel):
                 print("reatten_inputs", reatten_input[:self.print_batch])
                 print("reatten_logits", reatten_vectors[:self.print_batch])
             if self.print_batch > 0:
-                print("gate_logits", gate_logits[:self.print_batch])
-                print("gates", gates[:self.print_batch])
+                print("gate_logits")
+                print(gate_logits[:self.print_batch])
+                print("gates")
+                print(gates[:self.print_batch])
             if self.print_batch > 0 and decay is not None:
                 print("decays", decay.reshape(gates.size(0), -1)[:self.print_batch])
 
