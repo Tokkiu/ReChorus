@@ -62,7 +62,7 @@ class EvoMoE(SequentialModel):
                             help='pre softmax.')
         parser.add_argument('--print_seq', type=int, default=0,
                             help='pre softmax.')
-        parser.add_argument('--fusion', type=str, default='top',
+        parser.add_argument('--fusion', type=str, default='fusion',
                             help='pre softmax.')
 
         # Reweight
