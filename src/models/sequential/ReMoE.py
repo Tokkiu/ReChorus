@@ -227,6 +227,8 @@ class ReMoE(SequentialModel):
                 print("reatten_logits:")
                 print(reatten_vectors[:self.print_batch].detach())
             if self.print_batch > 0:
+                print("lengths:")
+                print(lengths[:self.print_batch].detach())
                 print("gate_logits:")
                 print(gate_logits[:self.print_batch].detach())
                 print("gates:")
