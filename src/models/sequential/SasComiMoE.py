@@ -47,6 +47,12 @@ class SasComiMoE(SequentialModel):
                             help='moe loss weight.')
         parser.add_argument('--pre_softmax', type=int, default=0,
                             help='pre softmax.')
+        parser.add_argument('--fusion', type=int, default=1,
+                            help='fusion.')
+        parser.add_argument('--print_batch', type=int, default=0,
+                            help='fusion.')
+        parser.add_argument('--print_seq', type=int, default=0,
+                            help='fusion.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -59,6 +65,9 @@ class SasComiMoE(SequentialModel):
         self.max_his = args.history_max
         self.use_scaler = args.use_scaler == 1
         self.pre_softmax = args.pre_softmax == 1
+        self.fusion = args.fusion
+        self.print_seq = args.print_seq
+        self.print_batch = args.print_batch
         self.loss_coef = args.moe_loss
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self.max_his = args.history_max
@@ -123,7 +132,7 @@ class SasComiMoE(SequentialModel):
         his_vectors = torch.cat(his_vectors, 1) # bsz, K, emb
 
         vu = self.primary(history, lengths, his_sas_vectors).squeeze(1)
-        gates, load = self.noisy_top_k_gating(vu, self.training)
+        gates, load, gate_logits = self.noisy_top_k_gating(vu, self.training)
         # import pdb; pdb.set_trace()
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
@@ -131,9 +140,21 @@ class SasComiMoE(SequentialModel):
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
         val, gtx = gates.topk(self.k)
-        if not self.training and gtx.size(0) % 16 == 0:
-            print(gtx.reshape(16, -1))
-        interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
+        if self.fusion == 'fusion':
+            interest_vectors = his_vectors.sum(1).unsqueeze(1)
+        else:
+            interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
+
+        # Debugging inference
+        if not self.training:
+            if self.print_seq > 0:
+                print("seqs:")
+                print(history[:self.print_seq].detach())
+            if self.print_batch > 0:
+                print("gate_logits:")
+                print(gate_logits[:self.print_batch].detach())
+                print("gates:")
+                print(gates[:self.print_batch].detach())
 
         i_vectors = self.i_embeddings(i_ids)
         if feed_dict['phase'] == 'train':
@@ -246,7 +267,7 @@ class SasComiMoE(SequentialModel):
             load = (self._prob_in_top_k(clean_logits, noisy_logits, noise_stddev, top_logits)).sum(0)
         else:
             load = self._gates_to_load(gates)
-        return gates, load
+        return gates, load, top_k_logits
 
 
 
