@@ -65,16 +65,14 @@ class EvoMoE(SequentialModel):
         parser.add_argument('--fusion', type=str, default='top',
                             help='pre softmax.')
 
-        # Fixed temp
-        parser.add_argument('--temp', type=float, default=-1.0,
-                            help='gumbel_temperature.')
-
         # Reweight
         parser.add_argument('--re_atten', type=int, default=0,
-                            help='gumbel_temperature.')
+                            help='reweight gates.')
 
 
-        # Annealing temp
+        # Annealing temp for gumbel softmax
+        parser.add_argument('--use_gumbel', type=int, default=0,
+                            help='change_temp.')
         parser.add_argument('--temp_decay', type=float, default=0.99999,
                             help='temp_decay.')
         parser.add_argument('--max_temp', type=float, default=2.0,
@@ -82,19 +80,21 @@ class EvoMoE(SequentialModel):
         parser.add_argument('--min_temp', type=float, default=0.5,
                             help='temp_decay.')
 
-        parser.add_argument('--change_temp', type=int, default=100000,
-                            help='change_temp.')
-
+        # Evo temporal decay
         parser.add_argument('--use_evo', type=int, default=0,
                             help='change_temp.')
-
         parser.add_argument('--neg_head_p', type=float, default=0.5,
                             help='The probability of sampling negative head entity.')
         parser.add_argument('--decay_factor', type=float, default=1,
                             help='decay_factor')
 
+        # Xavier init
         parser.add_argument('--xav_init', type=int, default=0,
                             help='xav_init.')
+
+        # Init decay emb by freq_x
+        parser.add_argument('--freq_init', type=int, default=1,
+                            help='freq_init.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -116,16 +116,12 @@ class EvoMoE(SequentialModel):
         self.print_batch = args.print_batch
         self.print_seq = args.print_seq
 
-        self.gumbel_temperature = 2
-        self.gumbel_temperature_arg = args.temp
-        self.change_temp_epoch = args.change_temp
-        self.temp_moe = self.gumbel_temperature > 0
-
-        self.max_temp, self.min_temp, self.temp_decay = (2.0, 0.5, 0.99999)
-        self.max_temp = args.max_temp
-        self.min_temp = args.min_temp
-        self.temp_decay = args.temp_decay
-        self.anneal_moe = self.max_temp > 0
+        # Temp decay
+        self.max_temp, self.min_temp, self.temp_decay = (1, 1, 1)
+        self.max_temp = args.max_temp # 2.0
+        self.min_temp = args.min_temp # 0.5
+        self.temp_decay = args.temp_decay # 0.999
+        self.use_gumbel = args.use_gumbel > 0
         self.curr_temp = self.max_temp
         self.num_updates = 0
 
@@ -134,10 +130,6 @@ class EvoMoE(SequentialModel):
         self.neg_head_p = args.neg_head_p
 
 
-        self.xav_init = args.xav_init > 0
-
-        self.re_atten = args.re_atten > 0
-
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
 
@@ -145,33 +137,32 @@ class EvoMoE(SequentialModel):
         self.noisy_gating = True
         self.w_gate = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(self.emb_size, self.num_experts), requires_grad=True)
-
-        self.reweight_layers = nn.ModuleList([
-            nn.Linear(self.max_his, 1)
-            for _ in range(self.num_experts)
-        ])
-
-        self.re_layer1 = nn.Linear(self.max_his, self.emb_size)
-        self.re_layer2 = nn.Linear(self.emb_size, 1)
-
-        self.reweight_act = torch.sigmoid
-
         self.softplus = nn.Softplus()
         self.softmax = nn.Softmax(1)
         self.register_buffer("mean", torch.tensor([0.0]))
         self.register_buffer("std", torch.tensor([1.0]))
         self._define_params()
-        self.apply(self.init_weights)
 
-        self.experts = nn.ModuleList([
-            ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
-            for _ in range(self.num_experts)
-        ])
+        # reweight gate by attention
+        self.re_atten = args.re_atten > 0
+        self.re_layer1 = nn.Linear(self.max_his, self.emb_size)
+        self.re_layer2 = nn.Linear(self.emb_size, 1)
+
+        # Init weights
+        self.apply(self.init_weights)
+        self.xav_init = args.xav_init > 0
         if self.xav_init:
             self.apply(self.xavier_normal_initialization)
+
+        self.experts = nn.ModuleList([
+            ComiExpert(args, corpus, k=1)
+            for _ in range(self.num_experts)
+        ])
+
+        # share item embedding
         for expert in self.experts:
             expert.i_embeddings = self.i_embeddings
-        self.primary = ComiExpert(args, corpus, k=1, use_evo=self.use_evo)
+        self.primary = ComiExpert(args, corpus, k=1)
         self.primary.i_embeddings = self.i_embeddings
 
     def _define_params(self):
@@ -185,8 +176,6 @@ class EvoMoE(SequentialModel):
 
     def forward(self, feed_dict):
         self.check_list = []
-        if self.training and feed_dict['train_epoch'] > self.change_temp_epoch:
-            self.gumbel_temperature = self.gumbel_temperature_arg
         i_ids = feed_dict['item_id']  # [batch_size, -1]
         history = feed_dict['history_items']  # [batch_size, history_max]
         lengths = feed_dict['lengths']  # [batch_size]
@@ -204,61 +193,56 @@ class EvoMoE(SequentialModel):
         # Self-attention
         causality_mask = np.tril(np.ones((1, 1, seq_len, seq_len), dtype=np.int))
         attn_mask = torch.from_numpy(causality_mask).to(self.device)
-        # attn_mask = valid_his.view(batch_size, 1, 1, seq_len)
         for block in self.transformer_block:
             his_sas_vectors = block(his_sas_vectors, attn_mask)
         his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
+        # Call experts
         expert_output = [expert(history, lengths, his_sas_vectors, feed_dict) for expert in self.experts]
-
         his_vectors = [out[0] for out in expert_output]
         his_vectors = torch.cat(his_vectors, 1)
         atten_vectors = [out[1] for out in expert_output]
 
+        # Call primary expert
         vu, atten, decay = self.primary(history, lengths, his_sas_vectors, feed_dict)
         vu = vu.squeeze(1)
-        print_gates = False
-        if not self.training:
-            if self.print_seq > 0:
-                print(history[:self.print_seq])
-            # print((atten[:self.print_batch]*100).int())
-            print_gates = True
 
-        reatten_vectors = None
+        # Call reweighting attention
+        reatten_vectors, reatten_input, reatten_vectors = None, None, None
         if self.re_atten:
             reatten_input = torch.cat(atten_vectors, 1)
             reatten_vectors = self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1)  # bsz, experts
             if not self.training:
-                print("reatten_input", reatten_input[:self.print_batch])
-                print("reatten_vectors", reatten_vectors[:self.print_batch])
 
+
+        # Call gates
         gates, load, gate_logits = self.noisy_top_k_gating(vu, self.training, bias=reatten_vectors)
-        if not self.training:
-            print("gate_logits", gate_logits[:self.print_batch])
-        # import pdb; pdb.set_trace()
         importance = gates.sum(0)
         loss = self.cv_squared(importance) + self.cv_squared(load)
         loss *= self.loss_coef
 
-
-            # gates = (reatten_vectors * gates)
-            # gates /= gates.sum(1).unsqueeze(1)
-
-        # import pdb; pdb.set_trace()
         if self.use_scaler:
             his_vectors = his_vectors * gates.unsqueeze(2)
 
         if self.fusion == 'fusion':
-            if print_gates and self.print_batch > 0:
-                print("gates", gates[:self.print_batch])
-                if decay is not None:
-                    print(decay.reshape(gates.size(0), -1)[:self.print_batch])
             interest_vectors = his_vectors.sum(1).unsqueeze(1)
         elif self.fusion == 'top':
             val, gtx = gates.topk(self.k)
             if not self.training and gtx.size(0) % 16 == 0:
                 print(gtx.reshape(16, -1))
             interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
+
+        # Debugging inference
+        if not self.training:
+            if self.print_seq > 0:
+                print("seqs", history[:self.print_seq])
+            if self.print_batch > 0:
+                print("reatten_inputs", reatten_input[:self.print_batch])
+                print("reatten_logits", reatten_vectors[:self.print_batch])
+                print("gate_logits", gate_logits[:self.print_batch])
+                print("gates", gates[:self.print_batch])
+            if self.print_batch > 0 and decay is not None:
+                print("decays", decay.reshape(gates.size(0), -1)[:self.print_batch])
 
         i_vectors = self.i_embeddings(i_ids)
         if feed_dict['phase'] == 'train':
@@ -270,10 +254,6 @@ class EvoMoE(SequentialModel):
         else:
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
-
-        # if self.training:
-        #     self.update_per_epoch(self.num_updates)
-        #     self.num_updates += 1
 
         return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
 
@@ -366,10 +346,7 @@ class EvoMoE(SequentialModel):
 
         # calculate topk + 1 that will be needed for the noisy gates
         if self.pre_softmax:
-            if self.temp_moe:
-                logits = self.softmax(logits/self.gumbel_temperature)
-            else:
-                logits = self.softmax(logits)
+            logits = self.softmax(logits)
         if bias is not None:
             n_logits = logits + bias
         else:
@@ -380,7 +357,7 @@ class EvoMoE(SequentialModel):
         if self.pre_softmax:
             top_k_gates = top_k_logits
         else:
-            if self.anneal_moe:
+            if self.use_gumbel:
                 top_k_gates = F.gumbel_softmax(top_k_logits.float(), tau=self.curr_temp, hard=False).type_as(top_k_logits)
             # elif self.temp_moe:
             #     n_top_k_logits /= self.gumbel_temperature
@@ -488,7 +465,7 @@ class ComiExpert(SequentialModel):
                             help='Whether add position embedding.')
         return SequentialModel.parse_model_args(parser)
 
-    def __init__(self, args, corpus, k=0, use_evo = False):
+    def __init__(self, args, corpus, k=0):
         super().__init__(args, corpus)
         self.emb_size = args.emb_size
         self.attn_size = args.attn_size
@@ -499,12 +476,12 @@ class ComiExpert(SequentialModel):
         self.max_his = args.history_max
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self._define_params()
-        self.use_evo = use_evo
+        self.use_evo = args.use_evo > 0
         self.decay_factor = args.decay_factor
-        self.apply(self.init_weights)
+        self.xav_init = args.xav_init > 0
+        self.freq_init = args.freq_init > 0
         if self.use_evo:
             self.relation_num = corpus.n_relations
-            # self.relation_num = 1
             self.freq_x = corpus.freq_x
             self.freq_dim = args.n_dft // 2 + 1
             self.freq_rand = args.freq_rand
@@ -513,7 +490,12 @@ class ComiExpert(SequentialModel):
             freq = np.linspace(0, 1, self.freq_dim) / 2.
             self.freqs = torch.from_numpy(np.concatenate((freq, -freq))).to(self.device).float()
             self.relation_range = torch.from_numpy(np.arange(self.relation_num)).to(self.device)
-            self.apply(self.init_weights)
+            
+        self.apply(self.init_weights)
+        if self.xav_init:
+            self.apply(self.xavier_normal_initialization)
+
+        if self.use_evo and self.freq_init:
             dft_freq_real = torch.tensor(np.real(self.freq_x))  # R * n_freq
             dft_freq_imag = torch.tensor(np.imag(self.freq_x))
             self.freq_real.weight.data.copy_(dft_freq_real)
@@ -559,14 +541,10 @@ class ComiExpert(SequentialModel):
             delta_t_n = feed_dict['history_delta_t'].float()  # B * H
             decay = self.idft_decay(delta_t_n).clamp(0, 1).unsqueeze(1).masked_fill(valid_mask == 0, 0.) # B * 1 * H * R
             decay = decay.mean(-1).unsqueeze(-1)
-            # import pdb; pdb.set_trace()
-            # attn_score = (attention * decay).squeeze(-1)
             attn_score = attn_score + decay.squeeze(-1) * self.decay_factor
 
         attn_score_out = attn_score.softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
-
         interest_vectors = (his_vectors[:, None, :, :] * attn_score_out[:, :, :, None]).sum(-2)  # bsz, K, emb
-
         return interest_vectors, attn_score_out, decay
     def idft_decay(self, delta_t):
         real, imag = self.freq_real(self.relation_range), self.freq_imag(self.relation_range)
