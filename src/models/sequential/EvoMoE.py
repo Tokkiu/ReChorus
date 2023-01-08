@@ -237,9 +237,10 @@ class EvoMoE(SequentialModel):
         if not self.training:
             if self.print_seq > 0:
                 print("seqs", history[:self.print_seq])
-            if self.print_batch > 0:
+            if self.print_batch > 0 and self.re_atten:
                 print("reatten_inputs", reatten_input[:self.print_batch])
                 print("reatten_logits", reatten_vectors[:self.print_batch])
+            if self.print_batch > 0:
                 print("gate_logits", gate_logits[:self.print_batch])
                 print("gates", gates[:self.print_batch])
             if self.print_batch > 0 and decay is not None:
