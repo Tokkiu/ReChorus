@@ -231,7 +231,7 @@ class EvoMoE(SequentialModel):
         elif self.fusion == 'top':
             val, gtx = gates.topk(self.k)
             if not self.training and gtx.size(0) % 16 == 0:
-                print(gtx.reshape(16, -1))
+                print("gtx", gtx.reshape(16, -1))
             interest_vectors = his_vectors.gather(1, gtx.unsqueeze(2).repeat(1, 1, self.emb_size))
 
         # Debugging inference
