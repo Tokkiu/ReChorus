@@ -45,7 +45,7 @@ class EvoMoE(SequentialModel):
         parser.add_argument('--K', type=int, default=4,
                             help='Number of hidden intent.')
         parser.add_argument('--top', type=int, default=4,
-                            help='Number of hidden intent.')
+                            help='Top k to select.')
         parser.add_argument('--add_pos', type=int, default=1,
                             help='Whether add position embedding.')
         parser.add_argument('--num_layers', type=int, default=1,
@@ -101,8 +101,8 @@ class EvoMoE(SequentialModel):
         super().__init__(args, corpus)
         self.emb_size = args.emb_size
         self.attn_size = args.attn_size
-        self.k = args.top
-        self.num_experts = args.K
+        self.k = args.top # top k
+        self.num_experts = args.K # expert count
         self.add_pos = args.add_pos
         self.max_his = args.history_max
         self.use_scaler = args.use_scaler == 1
@@ -132,6 +132,8 @@ class EvoMoE(SequentialModel):
 
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
+        if self.fusion == 'fusion':
+            self.k = self.num_experts
 
 
         self.noisy_gating = True
