@@ -176,7 +176,7 @@ class ReMoE(SequentialModel):
         C_mean = torch.mean(attention, dim=2, keepdim=True)
         C_reg = (attention - C_mean)
         C_reg = torch.bmm(C_reg, C_reg.transpose(1,2)) / self.emb_size
-        if not self.training and self.print_batch > 0:
+        if not self.training and self.print_batch > 0 and self.reg_loss_ratio > 0:
             print("C_reg:")
             print(C_reg[:self.print_batch].detach())
         dr = torch.diagonal(C_reg,  dim1=-2, dim2=-1)
