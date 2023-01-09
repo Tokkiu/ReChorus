@@ -463,13 +463,14 @@ class ComiExpert(SequentialModel):
 
         # Self-attention
         attn_score = self.W2(self.W1(his_pos_vectors).tanh())  # bsz, his_max, K
+        if self.use_norm:
+            attn_score = (attn_score - attn_score.max())/(attn_score.max() - attn_score.min())
+
         attn_score = attn_score.masked_fill(valid_his.unsqueeze(-1) == 0, -np.inf)
         attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
-        if self.use_norm:
-            import pdb;pdb.set_trace()
-            attn_score = (attn_score - attn_score.min())/(attn_score.max() - attn_score.min())
-        else:
+        if not self.use_norm:
             attn_score = (attn_score - attn_score.max())
+
 
         attn_score_out = (attn_score/temp).softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
         interest_vectors = (his_vectors[:, None, :, :] * attn_score_out[:, :, :, None]).sum(-2)  # bsz, K, emb
