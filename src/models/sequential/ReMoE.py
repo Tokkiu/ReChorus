@@ -170,14 +170,13 @@ class ReMoE(SequentialModel):
     def calculate_reg_loss(self, attention):
         C_mean = torch.mean(attention, dim=2, keepdim=True)
         C_reg = (attention - C_mean)
-        C_reg = torch.bmm(C_reg, C_reg.transpose(1, 2)) / self.emb_size
+        C_reg = torch.bmm(C_reg, C_reg.transpose(1,2)) / self.emb_size
         if not self.training and self.print_batch > 0:
             print("C_reg:")
             print(C_reg[:self.print_batch].detach())
-        n1 = torch.norm(C_reg, dim=(1, 2)) ** 2
-        dr = torch.diagonal(C_reg, dim1=-2, dim2=-1)
+        dr = torch.diagonal(C_reg,  dim1=-2, dim2=-1)
         n2 = torch.norm(dr, dim=(1)) ** 2
-        return (n1 - n2).sum() / 2
+        return n2.sum()
 
     def forward(self, feed_dict):
         self.check_list = []
