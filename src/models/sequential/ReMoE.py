@@ -110,6 +110,7 @@ class ReMoE(SequentialModel):
         self.print_batch = args.print_batch
         self.print_seq = args.print_seq
         self.atten_temp = args.atten_temp
+        self.reg_loss_ratio = args.reg_loss_ratio
 
         # Temp decay
         self.max_temp, self.min_temp, self.temp_decay = (1, 1, 1)
