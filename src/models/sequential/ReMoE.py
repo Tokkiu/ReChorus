@@ -157,6 +157,7 @@ class ReMoE(SequentialModel):
             expert.i_embeddings = self.i_embeddings
         self.primary = ComiExpert(args, corpus, k=1)
         self.primary.i_embeddings = self.i_embeddings
+        self.cos = nn.CosineSimilarity(dim=2, eps=1e-6)
 
     def _define_params(self):
         self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
@@ -265,8 +266,10 @@ class ReMoE(SequentialModel):
             target_pred = (interest_vectors * target_vector[:, None, :]).sum(-1)  # bsz, K
             idx_select = target_pred.max(-1)[1]  # bsz
             user_vector = interest_vectors[torch.arange(batch_size), idx_select, :]  # bsz, emb
-            prediction = (user_vector[:, None, :] * i_vectors).sum(-1)
-            import pdb;  pdb.set_trace()
+            if self.use_cos:
+                prediction = self.cos(user_vector.unsqueeze(1), i_vectors)
+            else:
+                prediction = (user_vector[:, None, :] * i_vectors).sum(-1)
         else:
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             import pdb;  pdb.set_trace()
