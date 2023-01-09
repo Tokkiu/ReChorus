@@ -89,6 +89,8 @@ class ReMoE(SequentialModel):
                             help='temp_decay.')
         parser.add_argument('--reg_loss_ratio', type=float, default=0.0,
                             help='reg loss.')
+        parser.add_argument('--use_cos', type=int, default=0,
+                            help='cos sim.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -157,6 +159,8 @@ class ReMoE(SequentialModel):
             expert.i_embeddings = self.i_embeddings
         self.primary = ComiExpert(args, corpus, k=1)
         self.primary.i_embeddings = self.i_embeddings
+
+        self.use_cos = args.use_cos > 0
         self.cos = nn.CosineSimilarity(dim=2, eps=1e-6)
 
     def _define_params(self):
