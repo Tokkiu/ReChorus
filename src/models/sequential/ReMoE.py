@@ -266,8 +266,10 @@ class ReMoE(SequentialModel):
             idx_select = target_pred.max(-1)[1]  # bsz
             user_vector = interest_vectors[torch.arange(batch_size), idx_select, :]  # bsz, emb
             prediction = (user_vector[:, None, :] * i_vectors).sum(-1)
+            import pdb;  pdb.set_trace()
         else:
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
+            import pdb;  pdb.set_trace()
             prediction = prediction.max(-1)[0]  # bsz, -1
 
         reg_loss = self.calculate_reg_loss(atten_vectors) * self.reg_loss_ratio
