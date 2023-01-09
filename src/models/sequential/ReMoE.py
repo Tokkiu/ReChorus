@@ -170,7 +170,6 @@ class ReMoE(SequentialModel):
     def calculate_reg_loss(self, attention):
         C_mean = torch.mean(attention, dim=2, keepdim=True)
         C_reg = (attention - C_mean)
-        # C_reg = C_reg.matmul(C_reg.transpose(1,2)) / self.hidden_size
         C_reg = torch.bmm(C_reg, C_reg.transpose(1, 2)) / self.emb_size
         if not self.training and self.print_batch > 0:
             print("C_reg:")
@@ -208,8 +207,8 @@ class ReMoE(SequentialModel):
         his_vectors = [out[0] for out in expert_output]
         his_vectors = torch.cat(his_vectors, 1)
         atten_vectors = [out[1] for out in expert_output]
-        atten_vectors_logit = [out[2] for out in expert_output]
         atten_vectors = torch.cat(atten_vectors, 1)
+        atten_vectors_logit = [out[2] for out in expert_output]
         atten_vectors_logit = torch.cat(atten_vectors_logit, 1)
 
         # Call primary expert
@@ -272,6 +271,7 @@ class ReMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
+        import pdb; pdb.set_trace()
         reg_loss = self.calculate_reg_loss(atten_vectors) * self.reg_loss_ratio
 
         return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss, 'reg_loss':reg_loss}
