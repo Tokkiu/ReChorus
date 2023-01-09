@@ -212,6 +212,8 @@ class GeneralModel(BaseModel):
         loss = -((pos_pred[:, None] - neg_pred).sigmoid() * neg_softmax).sum(dim=1).log().mean()
         if 'moe_loss' in out_dict:
             loss += out_dict['moe_loss']
+        if 'reg_loss' in out_dict:
+            loss += out_dict['reg_loss']
         # neg_pred = (neg_pred * neg_softmax).sum(dim=1)
         # loss = F.softplus(-(pos_pred - neg_pred)).mean()
         # ↑ For numerical stability, use 'softplus(-x)' instead of '-log_sigmoid(x)'
