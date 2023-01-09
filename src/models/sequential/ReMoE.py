@@ -197,7 +197,7 @@ class ReMoE(SequentialModel):
         atten_vectors_logit = torch.cat(atten_vectors_logit, 1)
 
         # Call primary expert
-        vu, atten = self.primary(history, lengths, his_sas_vectors, feed_dict)
+        vu, atten, _ = self.primary(history, lengths, his_sas_vectors, feed_dict)
         vu = vu.squeeze(1)
 
         # Call reweighting attention
