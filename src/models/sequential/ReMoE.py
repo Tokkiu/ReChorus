@@ -270,7 +270,6 @@ class ReMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
-        import pdb; pdb.set_trace()
         reg_loss = self.calculate_reg_loss(atten_vectors) * self.reg_loss_ratio
 
         return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss, 'reg_loss':reg_loss}
