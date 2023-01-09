@@ -91,6 +91,8 @@ class ReMoE(SequentialModel):
                             help='reg loss.')
         parser.add_argument('--use_cos', type=int, default=0,
                             help='cos sim.')
+        parser.add_argument('--use_norm', type=int, default=0,
+                            help='norm atten.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -432,6 +434,7 @@ class ComiExpert(SequentialModel):
         self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
         self._define_params()
         self.xav_init = args.xav_init > 0
+        self.use_norm = args.use_norm > 0
 
         self.apply(self.init_weights)
         if self.xav_init:
@@ -462,8 +465,11 @@ class ComiExpert(SequentialModel):
         attn_score = self.W2(self.W1(his_pos_vectors).tanh())  # bsz, his_max, K
         attn_score = attn_score.masked_fill(valid_his.unsqueeze(-1) == 0, -np.inf)
         attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
-        attn_score = (attn_score - attn_score.max())
-        # attn_score /= temp
+        if self.use_norm:
+            attn_score = (attn_score - attn_score.min())/(attn_score.max() - attn_score.min())
+        else:
+            attn_score = (attn_score - attn_score.max())
+
         attn_score_out = (attn_score/temp).softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
         interest_vectors = (his_vectors[:, None, :, :] * attn_score_out[:, :, :, None]).sum(-2)  # bsz, K, emb
         return interest_vectors, attn_score_out, attn_score
