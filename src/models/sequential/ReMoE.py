@@ -87,6 +87,8 @@ class ReMoE(SequentialModel):
         # Atten temperature
         parser.add_argument('--atten_temp', type=float, default=1.0,
                             help='temp_decay.')
+        parser.add_argument('--reg_loss_ratio', type=float, default=0.0,
+                            help='reg loss.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -163,6 +165,19 @@ class ReMoE(SequentialModel):
                                     dropout=self.dropout, kq_same=False)
             for _ in range(self.num_layers)
         ])
+
+    def calculate_reg_loss(self, attention):
+        C_mean = torch.mean(attention, dim=2, keepdim=True)
+        C_reg = (attention - C_mean)
+        # C_reg = C_reg.matmul(C_reg.transpose(1,2)) / self.hidden_size
+        C_reg = torch.bmm(C_reg, C_reg.transpose(1, 2)) / self.emb_size
+        if not self.training:
+            print("C_reg:")
+            print(C_reg[:self.print_batch].detach())
+        n1 = torch.norm(C_reg, dim=(1, 2)) ** 2
+        dr = torch.diagonal(C_reg, dim1=-2, dim2=-1)
+        n2 = torch.norm(dr, dim=(1)) ** 2
+        return (n1 - n2).sum() / 2
 
     def forward(self, feed_dict):
         self.check_list = []
@@ -256,7 +271,9 @@ class ReMoE(SequentialModel):
             prediction = (interest_vectors[:, None, :, :] * i_vectors[:, :, None, :]).sum(-1)  # bsz, -1, K
             prediction = prediction.max(-1)[0]  # bsz, -1
 
-        return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
+        reg_loss = self.calculate_reg_loss(atten_vectors) * self.reg_loss_ratio
+
+        return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss, 'reg_loss':reg_loss}
 
     def cv_squared(self, x):
         """The squared coefficient of variation of a sample.
