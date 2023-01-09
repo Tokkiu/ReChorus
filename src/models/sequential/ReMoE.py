@@ -466,6 +466,7 @@ class ComiExpert(SequentialModel):
         attn_score = attn_score.masked_fill(valid_his.unsqueeze(-1) == 0, -np.inf)
         attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
         if self.use_norm:
+            import pdb;pdb.set_trace()
             attn_score = (attn_score - attn_score.min())/(attn_score.max() - attn_score.min())
         else:
             attn_score = (attn_score - attn_score.max())
