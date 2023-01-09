@@ -83,6 +83,10 @@ class ReMoE(SequentialModel):
         # Xavier init
         parser.add_argument('--xav_init', type=int, default=0,
                             help='xav_init.')
+
+        # Atten temperature
+        parser.add_argument('--atten_temp', type=float, default=1.0,
+                            help='temp_decay.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -103,6 +107,7 @@ class ReMoE(SequentialModel):
         self.fusion = args.fusion
         self.print_batch = args.print_batch
         self.print_seq = args.print_seq
+        self.atten_temp = args.atten_temp
 
         # Temp decay
         self.max_temp, self.min_temp, self.temp_decay = (1, 1, 1)
@@ -183,10 +188,13 @@ class ReMoE(SequentialModel):
         his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
         # Call experts
-        expert_output = [expert(history, lengths, his_sas_vectors, feed_dict) for expert in self.experts]
+        expert_output = [expert(history, lengths, his_sas_vectors, feed_dict, temp=self.atten_temp) for expert in self.experts]
         his_vectors = [out[0] for out in expert_output]
         his_vectors = torch.cat(his_vectors, 1)
         atten_vectors = [out[1] for out in expert_output]
+        atten_vectors_logit = [out[2] for out in expert_output]
+        atten_vectors = torch.cat(atten_vectors, 1)
+        atten_vectors_logit = torch.cat(atten_vectors_logit, 1)
 
         # Call primary expert
         vu, atten = self.primary(history, lengths, his_sas_vectors, feed_dict)
@@ -195,8 +203,7 @@ class ReMoE(SequentialModel):
         # Call reweighting attention
         reatten_vectors, reatten_input, reatten_vectors = None, None, None
         if self.re_atten:
-            reatten_input = torch.cat(atten_vectors, 1)
-            reatten_vectors = self.re_layer2(self.re_layer1(reatten_input).tanh()).squeeze(-1)  # bsz, experts
+            reatten_vectors = self.re_layer2(self.re_layer1(atten_vectors).tanh()).squeeze(-1)  # bsz, experts
 
 
         # Call gates
@@ -229,6 +236,10 @@ class ReMoE(SequentialModel):
             if self.print_batch > 0:
                 print("lengths:")
                 print(lengths[:self.print_batch].detach())
+                print("attention logits:")
+                print(atten_vectors_logit[:self.print_batch].detach())
+                print("attention weight:")
+                print(atten_vectors[:self.print_batch].detach())
                 print("gate_logits:")
                 print(gate_logits[:self.print_batch].detach())
                 print("gates:")
@@ -407,7 +418,7 @@ class ComiExpert(SequentialModel):
         self.W1 = nn.Linear(self.emb_size, self.attn_size)
         self.W2 = nn.Linear(self.attn_size, self.K)
 
-    def forward(self, history, lengths, his_vectors, feed_dict):
+    def forward(self, history, lengths, his_vectors, feed_dict, temp=1.0):
         self.check_list = []
         batch_size, seq_len = history.shape
 
@@ -425,6 +436,7 @@ class ComiExpert(SequentialModel):
         attn_score = attn_score.masked_fill(valid_his.unsqueeze(-1) == 0, -np.inf)
         attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
         attn_score = (attn_score - attn_score.max())
-        attn_score_out = attn_score.softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
+        # attn_score /= temp
+        attn_score_out = (attn_score/temp).softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
         interest_vectors = (his_vectors[:, None, :, :] * attn_score_out[:, :, :, None]).sum(-2)  # bsz, K, emb
-        return interest_vectors, attn_score_out
+        return interest_vectors, attn_score_out, attn_score
