@@ -93,6 +93,8 @@ class ReMoE(SequentialModel):
                             help='cos sim.')
         parser.add_argument('--use_norm', type=int, default=0,
                             help='norm atten.')
+        parser.add_argument('--vis', type=int, default=0,
+                            help='vis atten.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -115,6 +117,7 @@ class ReMoE(SequentialModel):
         self.print_seq = args.print_seq
         self.atten_temp = args.atten_temp
         self.reg_loss_ratio = args.reg_loss_ratio
+        self.vis = args.vis > 0
 
         # Temp decay
         self.max_temp, self.min_temp, self.temp_decay = (1, 1, 1)
@@ -308,7 +311,8 @@ class ReMoE(SequentialModel):
         self.curr_temp = max(
             self.max_temp * self.temp_decay ** num_updates, self.min_temp
         )
-        self.vis_emb(self.i_embeddings, num_updates)
+        if self.vis:
+            self.vis_emb(self.i_embeddings, num_updates)
 
     def log_per_epoch(self):
         return "temp set " + str(self.curr_temp) if self.use_gumbel else ""
