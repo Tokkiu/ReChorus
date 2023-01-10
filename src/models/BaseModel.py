@@ -14,6 +14,12 @@ from utils import utils
 from helpers.BaseReader import BaseReader
 
 from torch.nn.init import xavier_normal_, xavier_uniform_, constant_
+from sklearn.manifold import TSNE
+from sklearn.datasets import load_iris,load_digits
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import os, math
+from collections import defaultdict
 
 
 class BaseModel(nn.Module):
@@ -55,6 +61,23 @@ class BaseModel(nn.Module):
             xavier_normal_(module.weight.data)
             if module.bias is not None:
                 constant_(module.bias.data, 0)
+
+    def vis_emb(self, item_embedding, epoch):
+        embs = item_embedding.weight.detach().numpy()
+        label = []
+        x_in = []
+        xs = []
+        for k, v in self.item_cnt.items():
+            xs.append(k)
+            x_in.append(embs[k])
+            nv = round(math.log(v))
+            label.append(nv)
+        X_tsne = TSNE(n_components=2, random_state=33).fit_transform(x_in)
+        plt.figure(figsize=(10, 10))
+        plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, label="MoE", s=15, cmap='coolwarm')
+        plt.legend()
+        plt.savefig('images/moe_tsne_' + str(epoch) + '.png', dpi=120)
+
     def __init__(self, args, corpus: BaseReader):
         super(BaseModel, self).__init__()
         self.device = args.device
@@ -62,6 +85,7 @@ class BaseModel(nn.Module):
         self.buffer = args.buffer
         self.optimizer = None
         self.check_list = list()  # observe tensors in check_list every check_epoch
+        self.item_cnt = defaultdict(int)
 
     """
     Key Methods
@@ -273,6 +297,8 @@ class SequentialModel(GeneralModel):
                 user_seq = user_seq[-self.model.history_max:]
                 # user_seq += [(0, 0)] * (self.model.history_max - len(user_seq))
             feed_dict['history_items'] = np.array([x[0] for x in user_seq])
+            for item in feed_dict['history_items']:
+                self.item_cnt[item] += 1
             feed_dict['history_times'] = np.array([x[1] for x in user_seq])
             feed_dict['lengths'] = len(feed_dict['history_items'])
             return feed_dict

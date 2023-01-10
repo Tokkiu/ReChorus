@@ -308,6 +308,8 @@ class ReMoE(SequentialModel):
         self.curr_temp = max(
             self.max_temp * self.temp_decay ** num_updates, self.min_temp
         )
+        self.vis_emb(self.i_embeddings, num_updates)
+
     def log_per_epoch(self):
         return "temp set " + str(self.curr_temp) if self.use_gumbel else ""
 
