@@ -311,7 +311,7 @@ class ReMoE(SequentialModel):
         self.curr_temp = max(
             self.max_temp * self.temp_decay ** num_updates, self.min_temp
         )
-        if self.vis:
+        if self.vis and self.training:
             self.vis_emb(self.i_embeddings, num_updates)
 
     def log_per_epoch(self):
