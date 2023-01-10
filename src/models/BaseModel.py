@@ -63,6 +63,7 @@ class BaseModel(nn.Module):
                 constant_(module.bias.data, 0)
 
     def vis_emb(self, item_embedding, epoch):
+        import pdb; pdb.set_trace()
         embs = item_embedding.weight.detach().numpy()
         label = []
         x_in = []
@@ -76,7 +77,7 @@ class BaseModel(nn.Module):
         plt.figure(figsize=(10, 10))
         plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, label="MoE", s=15, cmap='coolwarm')
         plt.legend()
-        plt.savefig('images/moe_tsne_' + str(epoch) + '.png', dpi=120)
+        plt.savefig('images/'+self.name+'_tsne_' + str(epoch) + '.png', dpi=120)
         print("max label", max(label))
 
     def __init__(self, args, corpus: BaseReader):

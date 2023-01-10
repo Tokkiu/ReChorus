@@ -37,7 +37,7 @@ def parse_global_args(parser):
     return parser
 
 
-def main():
+def main(init_model_name):
     logging.info('-' * 45 + ' BEGIN: ' + utils.get_time() + ' ' + '-' * 45)
     exclude = ['check_epoch', 'log_file', 'model_path', 'path', 'pin_memory', 'load',
                'regenerate', 'sep', 'train', 'verbose', 'metric', 'test_epoch', 'buffer']
@@ -65,6 +65,7 @@ def main():
 
     # Define model
     model = model_name(args, corpus).to(args.device)
+    model.name = init_model_name
     logging.info('#params: {}'.format(model.count_variables()))
     logging.info(model)
 
@@ -140,4 +141,4 @@ if __name__ == '__main__':
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     logging.info(init_args)
 
-    main()
+    main(init_args.model_name)
