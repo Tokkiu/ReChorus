@@ -63,8 +63,7 @@ class BaseModel(nn.Module):
                 constant_(module.bias.data, 0)
 
     def vis_emb(self, item_embedding, epoch):
-        import pdb; pdb.set_trace()
-        embs = item_embedding.weight.detach().numpy()
+        embs = item_embedding.weight.detach().cpu().numpy()
         label = []
         x_in = []
         xs = []
