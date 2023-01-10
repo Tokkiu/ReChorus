@@ -77,6 +77,7 @@ class BaseModel(nn.Module):
         plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, label="MoE", s=15, cmap='coolwarm')
         plt.legend()
         plt.savefig('images/moe_tsne_' + str(epoch) + '.png', dpi=120)
+        print("max label", max(label))
 
     def __init__(self, args, corpus: BaseReader):
         super(BaseModel, self).__init__()
@@ -288,7 +289,8 @@ class SequentialModel(GeneralModel):
             idx_select = np.array(self.data['position']) > 0  # history length must be non-zero
             for key in self.data:
                 self.data[key] = np.array(self.data[key])[idx_select]
-            import pdb; pdb.set_trace()
+            for item in self.data['item_id']:
+                model.item_cnt[item] += 1
 
         def _get_feed_dict(self, index):
             feed_dict = super()._get_feed_dict(index)
@@ -298,8 +300,6 @@ class SequentialModel(GeneralModel):
                 user_seq = user_seq[-self.model.history_max:]
                 # user_seq += [(0, 0)] * (self.model.history_max - len(user_seq))
             feed_dict['history_items'] = np.array([x[0] for x in user_seq])
-            for item in feed_dict['history_items']:
-                self.item_cnt[item] += 1
             feed_dict['history_times'] = np.array([x[1] for x in user_seq])
             feed_dict['lengths'] = len(feed_dict['history_items'])
             return feed_dict
