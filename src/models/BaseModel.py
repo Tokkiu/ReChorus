@@ -288,6 +288,7 @@ class SequentialModel(GeneralModel):
             idx_select = np.array(self.data['position']) > 0  # history length must be non-zero
             for key in self.data:
                 self.data[key] = np.array(self.data[key])[idx_select]
+            import pdb; pdb.set_trace()
 
         def _get_feed_dict(self, index):
             feed_dict = super()._get_feed_dict(index)
