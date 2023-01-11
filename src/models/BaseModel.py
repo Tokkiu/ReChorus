@@ -81,7 +81,7 @@ class BaseModel(nn.Module):
         plt.savefig('images/'+self.name+'_tsne_' + epoch + '.png', dpi=120)
 
 
-        x_inn = F.normalize(torch.tensor(x_in),dim=1, p=2).numpy()
+        x_inn = F.normalize(torch.tensor(np.array(x_in)),dim=1, p=2).numpy()
         X_tsne = TSNE(n_components=2, random_state=33).fit_transform(x_inn)
         plt.figure(figsize=(10, 10))
         plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, label="MoE", s=15, cmap='coolwarm')
