@@ -72,12 +72,22 @@ class BaseModel(nn.Module):
             x_in.append(embs[k])
             nv = round(math.log(v))
             label.append(nv)
+        print("max label", max(label))
+        epoch = '{0:03d}'.format(epoch)
         X_tsne = TSNE(n_components=2, random_state=33).fit_transform(x_in)
         plt.figure(figsize=(10, 10))
         plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, label="MoE", s=15, cmap='coolwarm')
         plt.legend()
-        plt.savefig('images/'+self.name+'_tsne_' + str(epoch) + '.png', dpi=120)
-        print("max label", max(label))
+        plt.savefig('images/'+self.name+'_tsne_' + epoch + '.png', dpi=120)
+
+
+        x_inn = F.normalize(torch.tensor(x_in),dim=1, p=2).numpy()
+        X_tsne = TSNE(n_components=2, random_state=33).fit_transform(x_inn)
+        plt.figure(figsize=(10, 10))
+        plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, label="MoE", s=15, cmap='coolwarm')
+        plt.legend()
+        plt.savefig('images/' + self.name + '_tsne_n_' + epoch + '.png', dpi=120)
+
 
     def __init__(self, args, corpus: BaseReader):
         super(BaseModel, self).__init__()
