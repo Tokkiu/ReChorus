@@ -429,74 +429,6 @@ class ClsMoE(SequentialModel):
         return gates, load, n_logits
 
 
-class ComiExpert(SequentialModel):
-    reader = 'SeqReader'
-    runner = 'BaseRunner'
-    extra_log_args = ['emb_size', 'attn_size', 'K']
-
-    @staticmethod
-    def parse_model_args(parser):
-        parser.add_argument('--emb_size', type=int, default=64,
-                            help='Size of embedding vectors.')
-        parser.add_argument('--attn_size', type=int, default=8,
-                            help='Size of attention vectors.')
-        parser.add_argument('--K', type=int, default=2,
-                            help='Number of hidden intent.')
-        parser.add_argument('--add_pos', type=int, default=1,
-                            help='Whether add position embedding.')
-        return SequentialModel.parse_model_args(parser)
-
-    def __init__(self, args, corpus, k=0):
-        super().__init__(args, corpus)
-        self.emb_size = args.emb_size
-        self.attn_size = args.attn_size
-        self.add_pos = args.add_pos
-        self.max_his = args.history_max
-        self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
-        self._define_params()
-        self.xav_init = args.xav_init > 0
-        self.use_norm = args.use_norm > 0
-
-        self.apply(self.init_weights)
-        if self.xav_init:
-            self.apply(self.xavier_normal_initialization)
-
-
-    def _define_params(self):
-        self.i_embeddings = nn.Embedding(self.item_num, self.emb_size)
-        if self.add_pos:
-            self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
-        self.W1 = nn.Linear(self.emb_size, self.attn_size)
-        self.W2 = nn.Linear(self.attn_size, self.K)
-
-    def forward(self, history, lengths, his_vectors, feed_dict, temp=1.0):
-        self.check_list = []
-        batch_size, seq_len = history.shape
-
-        valid_his = (history > 0).long()
-
-        if self.add_pos:
-            position = (lengths[:, None] - self.len_range[None, :seq_len]) * valid_his
-            pos_vectors = self.p_embeddings(position)
-            his_pos_vectors = his_vectors + pos_vectors
-        else:
-            his_pos_vectors = his_vectors
-
-        # Self-attention
-        attn_score = self.W2(self.W1(his_pos_vectors).tanh())  # bsz, his_max, K
-        if self.use_norm:
-            attn_score = (attn_score - attn_score.max())/(attn_score.max() - attn_score.min())
-
-        attn_score = attn_score.masked_fill(valid_his.unsqueeze(-1) == 0, -np.inf)
-        attn_score = attn_score.transpose(-1, -2)  # bsz, K, his_max
-        if not self.use_norm:
-            attn_score = (attn_score - attn_score.max())
-
-
-        attn_score_out = (attn_score/temp).softmax(dim=-1).masked_fill(torch.isnan(attn_score), 0)
-        interest_vectors = (his_vectors[:, None, :, :] * attn_score_out[:, :, :, None]).sum(-2)  # bsz, K, emb
-        return interest_vectors, attn_score_out, attn_score
-
 
 
 class MultiHeadAttention2d(nn.Module):
@@ -641,9 +573,9 @@ class FeedForward(nn.Module):
 
 def get_attention_mask(item_seq, bidirectional=False):
     """Generate left-to-right uni-directional or bidirectional attention mask for multi-head attention."""
-    attention_mask = (item_seq != 0)
+    attention_mask = (item_seq != 0).float()
     extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # torch.bool
     if not bidirectional:
         extended_attention_mask = torch.tril(extended_attention_mask.expand((-1, -1, item_seq.size(-1), -1)))
-    extended_attention_mask = torch.where(extended_attention_mask, 0., -10000.)
+    # extended_attention_mask = torch.where(extended_attention_mask, 0., -10000.)
     return extended_attention_mask
