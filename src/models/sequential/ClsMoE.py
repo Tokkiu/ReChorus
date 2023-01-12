@@ -154,15 +154,11 @@ class ClsMoE(SequentialModel):
         if self.xav_init:
             self.apply(self.xavier_normal_initialization)
 
-        self.experts = nn.ModuleList([
-            ComiExpert(args, corpus, k=1)
-            for _ in range(self.num_experts)
-        ])
-
         # share item embedding
         for expert in self.experts:
             expert.i_embeddings = self.i_embeddings
-        self.primary = ComiExpert(args, corpus, k=1)
+        self.primary = layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
+                                    dropout=self.dropout, kq_same=False)
         self.primary.i_embeddings = self.i_embeddings
 
         self.use_cos = args.use_cos > 0
