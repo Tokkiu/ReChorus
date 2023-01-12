@@ -231,7 +231,6 @@ class ClsMoE(SequentialModel):
         # Call experts
         expert_outputs = [expert(his_sas_vectors_cls, bi_attn_mask) for expert in self.experts]
 
-
         his_vectors = [out[:, -1:, :] for out in expert_outputs]
         his_vectors = torch.cat(his_vectors, 1)
         # atten_vectors = [out[1] for out in expert_output]
@@ -241,6 +240,7 @@ class ClsMoE(SequentialModel):
 
         # Call primary expert
         vu = self.primary(his_sas_vectors_cls, bi_attn_mask)[:, -1, :]
+        import pdb; pdb.set_trace()
 
         # Call reweighting attention
         reatten_vectors, reatten_input, reatten_vectors = None, None, None
