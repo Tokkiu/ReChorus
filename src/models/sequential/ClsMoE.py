@@ -240,7 +240,6 @@ class ClsMoE(SequentialModel):
 
         # Call primary expert
         vu = self.primary(his_sas_vectors_cls, bi_attn_mask)[:, -1, :]
-        import pdb; pdb.set_trace()
 
         # Call reweighting attention
         reatten_vectors, reatten_input, reatten_vectors = None, None, None
