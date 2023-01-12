@@ -227,6 +227,7 @@ class ClsMoE(SequentialModel):
         history_cls = torch.cat([history, self.cls_token.unsqueeze(0).repeat(batch_size, 1)], 1)
         bi_attn_mask = get_attention_mask(history, bidirectional=True)
         cls = self.i_embeddings(self.cls_token)
+        import pdb; pdb.set_trace()
         his_sas_vectors_cls = torch.cat([his_sas_vectors, cls.unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1)])
         # Call experts
         expert_outputs = [expert(his_sas_vectors_cls, bi_attn_mask) for expert in self.experts]
