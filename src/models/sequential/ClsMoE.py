@@ -304,8 +304,10 @@ class ClsMoE(SequentialModel):
             prediction = prediction.max(-1)[0]  # bsz, -1
 
         # reg_loss = self.calculate_reg_loss(atten_vectors) * self.reg_loss_ratio
-
-        return {'prediction': prediction.view(batch_size, -1), 'moe_loss':loss}
+        res = {'prediction': prediction.view(batch_size, -1)}
+        if self.loss_coef > 0:
+            res['moe_loss'] = loss
+        return res
 
     def cv_squared(self, x):
         """The squared coefficient of variation of a sample.
