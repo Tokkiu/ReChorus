@@ -249,7 +249,11 @@ class ClsMoE(SequentialModel):
         # cls = self.i_embeddings(self.cls_token)
         # his_sas_vectors_cls = torch.cat([his_sas_vectors, cls.unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1)], 1)
         # Call experts
-        expert_outputs = [expert(his_sas_vectors, bi_attn_mask, keep_attention=True) for expert in self.experts]
+        expert_outputs = []
+        for expert in self.experts:
+            output = expert[0](his_sas_vectors, bi_attn_mask, keep_attention=True)
+            output = expert[1](output, bi_attn_mask, keep_attention=True)
+            expert_outputs.append(output)
 
         his_vectors = [self.gather_indexes(out[0], lengths) for out in expert_outputs]
         his_vectors = torch.cat(his_vectors, 1)
