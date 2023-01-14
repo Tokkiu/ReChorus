@@ -252,7 +252,7 @@ class ClsMoE(SequentialModel):
         expert_outputs = []
         for expert in self.experts:
             output = expert[0](his_sas_vectors, bi_attn_mask, keep_attention=True)
-            output = expert[1](output, bi_attn_mask, keep_attention=True)
+            output = expert[1](output[0], bi_attn_mask, keep_attention=True)
             expert_outputs.append(output)
 
         his_vectors = [self.gather_indexes(out[0], lengths) for out in expert_outputs]
