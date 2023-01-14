@@ -230,7 +230,8 @@ class ClsMoE(SequentialModel):
         his_item_vectors = self.i_embeddings(history)
 
         valid_his = (history > 0).long()
-        position = (lengths[:, None] - self.len_range[None, :seq_len]) * valid_his
+        lengths_cls = lengths + 1
+        position = (lengths_cls[:, None] - self.len_range[None, :seq_len+1]) * valid_his
         pos_vectors = self.p_embeddings(position)
         his_sas_vectors = his_item_vectors + pos_vectors
 
