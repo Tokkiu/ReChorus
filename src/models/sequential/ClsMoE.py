@@ -232,6 +232,7 @@ class ClsMoE(SequentialModel):
         valid_his = (history > 0).long()
         lengths_cls = lengths + 1
         position = (lengths_cls[:, None] - self.len_range[None, :seq_len+1]) * valid_his
+        import pdb; pdb.set_trace()
         pos_vectors = self.p_embeddings(position)
         his_sas_vectors = his_item_vectors + pos_vectors
 
