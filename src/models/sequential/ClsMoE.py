@@ -157,8 +157,6 @@ class ClsMoE(SequentialModel):
         # share item embedding
         for expert in self.experts:
             expert.i_embeddings = self.i_embeddings
-        self.primary = layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
-                                    dropout=self.dropout, kq_same=False)
         self.primary.i_embeddings = self.i_embeddings
 
         self.use_cos = args.use_cos > 0
@@ -168,16 +166,18 @@ class ClsMoE(SequentialModel):
         self.cls_token = torch.tensor(self.item_num).to(self.device)
         self.i_embeddings = nn.Embedding(self.item_num + 1, self.emb_size)
         self.p_embeddings = nn.Embedding(self.max_his + 2, self.emb_size)
-        self.transformer_block = nn.ModuleList([
+        # self.transformer_block = nn.ModuleList([
+        #     layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
+        #                             dropout=self.dropout, kq_same=False)
+        #     for _ in range(self.num_layers)
+        # ])
+        self.experts = nn.ModuleList([ nn.ModuleList([
             layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
             for _ in range(self.num_layers)
-        ])
-        self.experts = nn.ModuleList([
-            layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
+        ]) for _ in range(self.num_experts)])
+        self.primary = layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
-            for _ in range(self.num_experts)
-        ])
 
     def calculate_reg_loss(self, attention):
         C_mean = torch.mean(attention, dim=2, keepdim=True)
@@ -238,10 +238,10 @@ class ClsMoE(SequentialModel):
 
 
         # Self-attention
-        causality_mask = np.tril(np.ones((1, 1, seq_len, seq_len), dtype=np.int))
-        attn_mask = torch.from_numpy(causality_mask).to(self.device)
-        for block in self.transformer_block:
-            his_sas_vectors = block(his_sas_vectors, attn_mask)
+        # causality_mask = np.tril(np.ones((1, 1, seq_len, seq_len), dtype=np.int))
+        # attn_mask = torch.from_numpy(causality_mask).to(self.device)
+        # for block in self.transformer_block:
+        #     his_sas_vectors = block(his_sas_vectors, attn_mask)
         # his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
         # history_cls = torch.cat([history, self.cls_token.unsqueeze(0).repeat(batch_size, 1)], 1)
