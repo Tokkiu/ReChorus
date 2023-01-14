@@ -210,8 +210,14 @@ class ClsMoE(SequentialModel):
         )  # [B]
         item_seq = torch.cat((item_seq, padding.unsqueeze(-1)), dim=-1)  # [B max_len+1]
         for batch_id, last_position in enumerate(item_seq_len):
-            item_seq[batch_id][last_position] = self.mask_token
+            item_seq[batch_id][last_position] = self.cls_token
         return item_seq
+
+    def gather_indexes(self, output, gather_index):
+        """Gathers the vectors at the specific positions over a minibatch"""
+        gather_index = gather_index.view(-1, 1, 1).expand(-1, -1, output.shape[-1])
+        output_tensor = output.gather(dim=1, index=gather_index)
+        return output_tensor
 
     def forward(self, feed_dict):
         self.check_list = []
@@ -244,9 +250,10 @@ class ClsMoE(SequentialModel):
         # Call experts
         expert_outputs = [expert(his_sas_vectors, bi_attn_mask, keep_attention=True) for expert in self.experts]
 
-        his_vectors = [out[0][:, -1:, :] for out in expert_outputs]
+        his_vectors = [self.gather_indexes(out[0], lengths) for out in expert_outputs]
         his_vectors = torch.cat(his_vectors, 1)
-        atten_vectors = [out[1] for out in expert_outputs]
+        import pdb;pdb.set_trace()
+        atten_vectors = [out[1][:, :, -1] for out in expert_outputs]
         atten_vectors = torch.cat(atten_vectors, 1)
         # atten_vectors = [out[1] for out in expert_output]
         # atten_vectors = torch.cat(atten_vectors, 1)
