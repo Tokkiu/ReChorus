@@ -109,6 +109,6 @@ class TransformerLayer(nn.Module):
         output = self.linear1(context).relu()
         output = self.linear2(output)
         output = self.layer_norm2(self.dropout2(output) + context)
-        if return_atten:
+        if keep_attention:
             return output, attention
         return output
