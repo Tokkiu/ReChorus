@@ -235,6 +235,7 @@ class ClsMoE(SequentialModel):
         his_vectors = torch.cat(his_vectors, 1)
         atten_vectors = [out[1] for out in expert_outputs]
         atten_vectors = torch.cat(atten_vectors, 1)
+        import pdb; pdb.set_trace()
         # atten_vectors = [out[1] for out in expert_output]
         # atten_vectors = torch.cat(atten_vectors, 1)
         # atten_vectors_logit = [out[2] for out in expert_output]
