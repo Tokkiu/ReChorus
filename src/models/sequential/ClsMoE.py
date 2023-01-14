@@ -201,12 +201,25 @@ class ClsMoE(SequentialModel):
         extended_attention_mask = torch.where(extended_attention_mask, 0.0, -10000.0)
         return extended_attention_mask
 
+    def reconstruct_test_data(self, item_seq, item_seq_len):
+        """
+        Add mask token at the last position according to the lengths of item_seq
+        """
+        padding = torch.zeros(
+            item_seq.size(0), dtype=torch.long, device=item_seq.device
+        )  # [B]
+        item_seq = torch.cat((item_seq, padding.unsqueeze(-1)), dim=-1)  # [B max_len+1]
+        for batch_id, last_position in enumerate(item_seq_len):
+            item_seq[batch_id][last_position] = self.mask_token
+        return item_seq
+
     def forward(self, feed_dict):
         self.check_list = []
         i_ids = feed_dict['item_id']  # [batch_size, -1]
         history = feed_dict['history_items']  # [batch_size, history_max]
         lengths = feed_dict['lengths']  # [batch_size]
         batch_size, seq_len = history.shape
+        history = self.reconstruct_test_data(history, lengths)
 
         his_item_vectors = self.i_embeddings(history)
 
@@ -222,27 +235,26 @@ class ClsMoE(SequentialModel):
         attn_mask = torch.from_numpy(causality_mask).to(self.device)
         for block in self.transformer_block:
             his_sas_vectors = block(his_sas_vectors, attn_mask)
-        his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
+        # his_sas_vectors = his_sas_vectors * valid_his[:, :, None].float()
 
-        history_cls = torch.cat([history, self.cls_token.unsqueeze(0).repeat(batch_size, 1)], 1)
-        bi_attn_mask = get_attention_mask(history_cls, bidirectional=True)
-        cls = self.i_embeddings(self.cls_token)
-        his_sas_vectors_cls = torch.cat([his_sas_vectors, cls.unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1)], 1)
+        # history_cls = torch.cat([history, self.cls_token.unsqueeze(0).repeat(batch_size, 1)], 1)
+        bi_attn_mask = get_attention_mask(history, bidirectional=True)
+        # cls = self.i_embeddings(self.cls_token)
+        # his_sas_vectors_cls = torch.cat([his_sas_vectors, cls.unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1)], 1)
         # Call experts
-        expert_outputs = [expert(his_sas_vectors_cls, bi_attn_mask, keep_attention=True) for expert in self.experts]
+        expert_outputs = [expert(his_sas_vectors, bi_attn_mask, keep_attention=True) for expert in self.experts]
 
         his_vectors = [out[0][:, -1:, :] for out in expert_outputs]
         his_vectors = torch.cat(his_vectors, 1)
         atten_vectors = [out[1] for out in expert_outputs]
         atten_vectors = torch.cat(atten_vectors, 1)
-        import pdb; pdb.set_trace()
         # atten_vectors = [out[1] for out in expert_output]
         # atten_vectors = torch.cat(atten_vectors, 1)
         # atten_vectors_logit = [out[2] for out in expert_output]
         # atten_vectors_logit = torch.cat(atten_vectors_logit, 1)
 
         # Call primary expert
-        vu = self.primary(his_sas_vectors_cls, bi_attn_mask)[:, -1, :]
+        vu = self.primary(his_sas_vectors, bi_attn_mask)[:, -1, :]
 
         # Call reweighting attention
         reatten_vectors, reatten_input, reatten_vectors = None, None, None
