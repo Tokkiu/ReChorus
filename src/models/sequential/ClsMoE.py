@@ -167,7 +167,7 @@ class ClsMoE(SequentialModel):
     def _define_params(self):
         self.cls_token = torch.tensor(self.item_num).to(self.device)
         self.i_embeddings = nn.Embedding(self.item_num + 1, self.emb_size)
-        self.p_embeddings = nn.Embedding(self.max_his + 1, self.emb_size)
+        self.p_embeddings = nn.Embedding(self.max_his + 2, self.emb_size)
         self.transformer_block = nn.ModuleList([
             layers.TransformerLayer(d_model=self.emb_size, d_ff=self.emb_size, n_heads=self.num_heads,
                                     dropout=self.dropout, kq_same=False)
@@ -232,7 +232,6 @@ class ClsMoE(SequentialModel):
         valid_his = (history > 0).long()
         lengths_cls = lengths + 1
         position = (lengths_cls[:, None] - self.len_range[None, :seq_len+1]) * valid_his
-        import pdb; pdb.set_trace()
         pos_vectors = self.p_embeddings(position)
         his_sas_vectors = his_item_vectors + pos_vectors
 
