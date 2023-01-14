@@ -108,7 +108,7 @@ class ClsMoE(SequentialModel):
         self.use_scaler = args.use_scaler == 1
         self.pre_softmax = args.pre_softmax == 1
         self.loss_coef = args.moe_loss
-        self.len_range = torch.from_numpy(np.arange(self.max_his)).to(self.device)
+        self.len_range = torch.from_numpy(np.arange(self.max_his+1)).to(self.device)
         self.max_his = args.history_max
         self.num_layers = args.num_layers
         self.num_heads = args.num_heads
