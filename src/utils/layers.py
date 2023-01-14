@@ -50,12 +50,12 @@ class MultiHeadAttention(nn.Module):
         # print("nv", v.shape)
         # print("d_k", self.d_k)
         # calculate attention using function we will define next
-        output = self.scaled_dot_product_attention(q, k, v, self.d_k, mask)
+        output, attention = self.scaled_dot_product_attention(q, k, v, self.d_k, mask)
         if self.keep_head:
             return output
         # concatenate heads and put through final linear layer
         output = output.transpose(-2, -3).reshape(origin_shape)
-        return output
+        return output, attention
 
     @staticmethod
     def scaled_dot_product_attention(q, k, v, d_k, mask=None):
@@ -68,7 +68,7 @@ class MultiHeadAttention(nn.Module):
         scores = (scores - scores.max()).softmax(dim=-1)
         scores = scores.masked_fill(torch.isnan(scores), 0)
         output = torch.matmul(scores, v)  # bs, head, q_len, d_k
-        return output
+        return output, scores
 
 
 class TransformerLayer(nn.Module):
@@ -95,8 +95,8 @@ class TransformerLayer(nn.Module):
         self.layer_norm2 = nn.LayerNorm(d_model)
         self.dropout2 = nn.Dropout(dropout)
 
-    def forward(self, seq, mask=None):
-        context = self.masked_attn_head(seq, seq, seq, mask)
+    def forward(self, seq, mask=None, keep_attention=False):
+        context, attention = self.masked_attn_head(seq, seq, seq, mask)
         if self.keep_head:
             context = self.layer_norm1(self.dropout1(context))
             output = self.linear_head(context)
@@ -109,4 +109,6 @@ class TransformerLayer(nn.Module):
         output = self.linear1(context).relu()
         output = self.linear2(output)
         output = self.layer_norm2(self.dropout2(output) + context)
+        if return_atten:
+            return output, attention
         return output

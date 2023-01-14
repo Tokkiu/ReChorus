@@ -229,10 +229,12 @@ class ClsMoE(SequentialModel):
         cls = self.i_embeddings(self.cls_token)
         his_sas_vectors_cls = torch.cat([his_sas_vectors, cls.unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1)], 1)
         # Call experts
-        expert_outputs = [expert(his_sas_vectors_cls, bi_attn_mask) for expert in self.experts]
+        expert_outputs = [expert(his_sas_vectors_cls, bi_attn_mask, keep_attention=True) for expert in self.experts]
 
-        his_vectors = [out[:, -1:, :] for out in expert_outputs]
+        his_vectors = [out[0][:, -1:, :] for out in expert_outputs]
         his_vectors = torch.cat(his_vectors, 1)
+        atten_vectors = [out[1] for out in expert_outputs]
+        atten_vectors = torch.cat(atten_vectors, 1)
         # atten_vectors = [out[1] for out in expert_output]
         # atten_vectors = torch.cat(atten_vectors, 1)
         # atten_vectors_logit = [out[2] for out in expert_output]
@@ -279,8 +281,8 @@ class ClsMoE(SequentialModel):
                 print(lengths[:self.print_batch].detach())
                 # print("attention logits:")
                 # print(atten_vectors_logit[:self.print_batch].detach())
-                # print("attention weight:")
-                # print(atten_vectors[:self.print_batch].detach())
+                print("attention weight:")
+                print(atten_vectors[:self.print_batch].detach())
                 print("gate_logits:")
                 print(gate_logits[:self.print_batch].detach())
                 print("gates:")
