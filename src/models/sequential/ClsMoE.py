@@ -257,7 +257,7 @@ class ClsMoE(SequentialModel):
         atten_vectors_gather = []
         for atten_vector in atten_vectors:
             attens = [self.gather_indexes(atten_vector[:, i, :, :], lengths) for i in range(self.num_heads)]
-            attens = torch.cat(atten_vectors, 1)
+            attens = torch.cat(attens, 1)
             atten_vectors_gather.append(attens.unsqueeze(1))
 
         atten_vectors = torch.cat(atten_vectors_gather, 1)
