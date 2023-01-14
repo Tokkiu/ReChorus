@@ -253,9 +253,14 @@ class ClsMoE(SequentialModel):
 
         his_vectors = [self.gather_indexes(out[0], lengths) for out in expert_outputs]
         his_vectors = torch.cat(his_vectors, 1)
-        import pdb;pdb.set_trace()
-        atten_vectors = [out[1][:, :, -1] for out in expert_outputs]
-        atten_vectors = torch.cat(atten_vectors, 1)
+        atten_vectors = [out[1] for out in expert_outputs]
+        atten_vectors_gather = []
+        for atten_vector in atten_vectors:
+            attens = [self.gather_indexes(atten_vector[:, i, :, :], lengths) for i in range(self.num_heads)]
+            attens = torch.cat(atten_vectors, 1)
+            atten_vectors_gather.append(attens.unsqueeze(1))
+
+        atten_vectors = torch.cat(atten_vectors_gather, 1)
         # atten_vectors = [out[1] for out in expert_output]
         # atten_vectors = torch.cat(atten_vectors, 1)
         # atten_vectors_logit = [out[2] for out in expert_output]
