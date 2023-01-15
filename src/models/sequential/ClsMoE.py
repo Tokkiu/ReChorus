@@ -95,6 +95,9 @@ class ClsMoE(SequentialModel):
                             help='norm atten.')
         parser.add_argument('--vis', type=int, default=0,
                             help='vis atten.')
+
+        parser.add_argument('--trans', type=str, default="111111",
+                            help='trans layers.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -127,6 +130,15 @@ class ClsMoE(SequentialModel):
         self.use_gumbel = args.use_gumbel > 0
         self.curr_temp = self.max_temp
         self.num_updates = 0
+
+        trans_func = lambda a : int(a) > 0
+        trans_conf = args.trans
+        self.tln1 = trans_func(trans_conf[0])
+        self.tln2 = trans_func(trans_conf[1])
+        self.tlr1 = trans_func(trans_conf[2])
+        self.tlr2 = trans_func(trans_conf[3])
+        self.td1 = trans_func(trans_conf[4])
+        self.td2 = trans_func(trans_conf[5])
 
         if self.fusion not in ['fusion','top']:
             raise Exception("Invalid fusion", self.fusion)
@@ -251,8 +263,8 @@ class ClsMoE(SequentialModel):
         # Call experts
         expert_outputs = []
         for expert in self.experts:
-            output = expert[0](his_sas_vectors, bi_attn_mask, keep_attention=True)
-            output = expert[1](output[0], bi_attn_mask, keep_attention=True)
+            output = expert[0](his_sas_vectors, bi_attn_mask, keep_attention=True, ln1=self.tln1, ln2=self.tln2, lr1=self.tlr1, lr2=self.tlr2, d1=self.td1, d2=self.td2)
+            output = expert[1](output[0], bi_attn_mask, keep_attention=True, ln1=self.tln1, ln2=self.tln2, lr1=self.tlr1, lr2=self.tlr2, d1=self.td1, d2=self.td2)
             expert_outputs.append(output)
 
         his_vectors = [self.gather_indexes(out[0], lengths) for out in expert_outputs]
