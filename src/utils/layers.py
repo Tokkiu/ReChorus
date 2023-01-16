@@ -104,29 +104,34 @@ class TransformerLayer(nn.Module):
             # output = self.linear2(output)
             # output = self.layer_norm2(self.dropout2(output) + context)
             return output
-        if ln1:
-            context = self.layer_norm1(self.dropout1(context) + seq)
-        else:
-            if d1:
-                context = self.dropout1(context) + seq
-            else:
-                context = context + seq
-        if lr1:
-            output = self.linear1(context).relu()
-        else:
-            output = context.relu()
-        if lr2:
-            output = self.linear2(output)
-        if ln2:
-            if d2:
-                output = self.layer_norm2(self.dropout2(output) + context)
-            else:
-                output = self.layer_norm2(output + context)
-        else:
-            if d2:
-                output = self.dropout2(output) + context
-            else:
-                output = output + context
+        context = self.layer_norm1(self.dropout1(context) + seq)
+        output = self.linear1(context).relu()
+        output = self.linear2(output)
+        output = self.layer_norm2(self.dropout2(output) + context)
+
+        # if ln1:
+        #     context = self.layer_norm1(self.dropout1(context) + seq)
+        # else:
+        #     if d1:
+        #         context = self.dropout1(context) + seq
+        #     else:
+        #         context = context + seq
+        # if lr1:
+        #     output = self.linear1(context).relu()
+        # else:
+        #     output = context.relu()
+        # if lr2:
+        #     output = self.linear2(output)
+        # if ln2:
+        #     if d2:
+        #         output = self.layer_norm2(self.dropout2(output) + context)
+        #     else:
+        #         output = self.layer_norm2(output + context)
+        # else:
+        #     if d2:
+        #         output = self.dropout2(output) + context
+        #     else:
+        #         output = output + context
         if keep_attention:
             return output, attention
         return output
