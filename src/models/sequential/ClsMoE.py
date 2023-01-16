@@ -98,6 +98,9 @@ class ClsMoE(SequentialModel):
 
         parser.add_argument('--trans', type=str, default="111111",
                             help='trans layers.')
+
+        parser.add_argument('--category_col', type=str, default='i_category',
+                            help='The name of category column in item_meta.csv.')
         return SequentialModel.parse_model_args(parser)
 
     def __init__(self, args, corpus):
@@ -159,6 +162,14 @@ class ClsMoE(SequentialModel):
         self.re_atten = args.re_atten > 0
         self.re_layer1 = nn.Linear(self.max_his, self.emb_size)
         self.re_layer2 = nn.Linear(self.emb_size, 1)
+
+        # category
+        if args.category_col in corpus.item_meta_df.columns:
+            self.category_col = args.category_col
+            self.category_num = corpus.item_meta_df[self.category_col].max() + 1
+        else:
+            self.category_col, self.category_num = None, 1  # a virtual global category
+        self.cate_embeddings = nn.Embedding(self.category_num, self.emb_size)
 
         # Init weights
         self.apply(self.init_weights)
@@ -234,12 +245,14 @@ class ClsMoE(SequentialModel):
     def forward(self, feed_dict):
         self.check_list = []
         i_ids = feed_dict['item_id']  # [batch_size, -1]
+        c_ids = feed_dict['category_id']  # [batch_size, -1]
         history = feed_dict['history_items']  # [batch_size, history_max]
         lengths = feed_dict['lengths']  # [batch_size]
         batch_size, seq_len = history.shape
         history = self.reconstruct_test_data(history, lengths)
 
         his_item_vectors = self.i_embeddings(history)
+        self.calculate_attr_loss(i_ids, c_ids)
 
         valid_his = (history > 0).long()
         lengths_cls = lengths + 1
@@ -352,6 +365,56 @@ class ClsMoE(SequentialModel):
         if self.loss_coef > 0:
             res['moe_loss'] = loss
         return res
+
+
+    def calculate_attr_loss(self, iids, cids):
+        c_embs = self.cate_embeddings(cids)
+        i_embs = self.i_embeddings(iids)
+        import pdb; pdb.set_trace()
+
+
+    class Dataset(SequentialModel.Dataset):
+        def __init__(self, model, corpus, phase):
+            super().__init__(model, corpus, phase)
+            col_name = self.model.category_col
+            items = self.corpus.item_meta_df['item_id']
+            categories = self.corpus.item_meta_df[col_name] if col_name is not None else np.zeros_like(items)
+            self.item2cate = dict(zip(items, categories))
+
+        def _get_feed_dict(self, index):
+            # Collect information related to the target item:
+            # - category id
+            # - time intervals w.r.t. recent relational interactions (-1 if not existing)
+            feed_dict = super()._get_feed_dict(index)
+            user_id, time = self.data['user_id'][index], self.data['time'][index]
+            history_item, history_time = feed_dict['history_items'], feed_dict['history_times']
+            category_id = [self.item2cate[x] for x in feed_dict['item_id']]
+            relational_interval = list()
+            for i, target_item in enumerate(feed_dict['item_id']):
+                interval = np.ones(self.model.relation_num, dtype=float) * -1
+                # relational intervals
+                for r_idx in range(1, self.model.relation_num):
+                    for j in range(len(history_item))[::-1]:
+                        if (history_item[j], r_idx, target_item) in self.corpus.triplet_set:
+                            interval[r_idx] = (time - history_time[j]) / self.model.time_scalar
+                            break
+                relational_interval.append(interval)
+            feed_dict['category_id'] = np.array(category_id)
+            feed_dict['relational_interval'] = np.array(relational_interval, dtype=np.float32)
+            return feed_dict
+
+        def actions_before_epoch(self):
+            if self.kg_train:  # sample negative heads and tails for the KG embedding task
+                for i in range(len(self)):
+                    head, tail, relation = self.data['head'][i], self.data['tail'][i], self.data['relation'][i]
+                    self.neg_tails[i] = np.random.randint(1, self.corpus.n_items)
+                    self.neg_heads[i] = np.random.randint(1, self.corpus.n_items)
+                    while (head, relation, self.neg_tails[i]) in self.corpus.triplet_set:
+                        self.neg_tails[i] = np.random.randint(1, self.corpus.n_items)
+                    while (self.neg_heads[i], relation, tail) in self.corpus.triplet_set:
+                        self.neg_heads[i] = np.random.randint(1, self.corpus.n_items)
+            else:
+                super().actions_before_epoch()
 
     def cv_squared(self, x):
         """The squared coefficient of variation of a sample.
